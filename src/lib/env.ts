@@ -25,6 +25,7 @@ export const env = {
     clientId: process.env.MS_CLIENT_ID,
     clientSecret: process.env.MS_CLIENT_SECRET,
   }),
+  anthropicKey: () => process.env.ANTHROPIC_API_KEY,
   parishName: () => process.env.PARISH_NAME ?? "Saint Helen",
   timezone: () => process.env.PARISH_TIMEZONE ?? "America/New_York",
   devOtpEcho: () => process.env.DEV_OTP_ECHO === "true", // prints codes to the server log when no SMS provider is configured

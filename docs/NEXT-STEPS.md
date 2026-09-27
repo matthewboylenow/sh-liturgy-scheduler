@@ -19,6 +19,7 @@ Project → Settings → Environment Variables. Neon already set `DATABASE_URL`.
 | `CRON_SECRET` | `openssl rand -base64 32`. Vercel sends it automatically as `Authorization: Bearer` on cron calls. |
 | `PARISH_NAME` | `Saint Helen` |
 | `PARISH_TIMEZONE` | `America/New_York` |
+| `ANTHROPIC_API_KEY` | from console.anthropic.com. Only used to read the presider schedule PDF (Admin → Schedule → Presider schedule). |
 | `DEV_OTP_ECHO` | leave unset in production |
 
 Redeploy after adding (Deployments → ⋯ → Redeploy). Env changes do not apply to the running deployment.

@@ -37,6 +37,7 @@ src/lib/schedule.ts     getLiturgies (relational query), claimPosition, changeAs
 src/lib/alerts.ts       notifyMinistryOpenSlot, sendReminders, sendOpenSlotDigests
 src/lib/notify.ts       sendSms / sendEmail with notification_log rows; DEV_OTP_ECHO prints instead of sending
 src/lib/kiosk.ts        kiosk cookie sh_kiosk, kioskToday() shape
+src/lib/presiders.ts    presider schedule PDF -> Claude (structured output) -> review -> assignments. KNOWN_PRESIDERS hardcodes TPN.
 src/lib/time.ts         everything timezone. Dates are YYYY-MM-DD local strings, times "HH:mm", startsAt is UTC computed with America/New_York.
 src/app/(auth)/         login, verify, invite pages + actions.ts
 src/app/app/            volunteer portal + actions.ts

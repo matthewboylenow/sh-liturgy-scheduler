@@ -10,6 +10,7 @@ import {
   uniqueIndex,
   index,
   primaryKey,
+  jsonb,
 } from "drizzle-orm/pg-core";
 import { relations, sql } from "drizzle-orm";
 
@@ -47,6 +48,7 @@ export const users = pgTable(
     notifySms: boolean("notify_sms").notNull().default(true),
     notifyEmail: boolean("notify_email").notNull().default(true),
     entraOid: text("entra_oid"), // Microsoft Entra object id, staff only
+    initials: text("initials"), // as printed on the presider schedule, e.g. TPN
     notes: text("notes"),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
@@ -56,6 +58,7 @@ export const users = pgTable(
     uniqueIndex("users_phone_idx").on(t.phone),
     uniqueIndex("users_username_idx").on(t.username),
     uniqueIndex("users_entra_oid_idx").on(t.entraOid),
+    uniqueIndex("users_initials_idx").on(t.initials),
   ],
 );
 
@@ -241,6 +244,31 @@ export const kiosks = pgTable("kiosks", {
   keyHash: text("key_hash").notNull(),
   active: boolean("active").notNull().default(true),
   lastSeenAt: timestamp("last_seen_at", { withTimezone: true }),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+// ---------- Presider schedule imports ----------
+
+export type PresiderImportRow = {
+  date: string; // YYYY-MM-DD
+  time: string; // HH:mm
+  initials: string;
+  sundayName: string | null;
+};
+export type PresiderImportPayload = {
+  legend: Record<string, string>; // initials -> name as printed, e.g. NS -> "Fr. Nick Sertich"
+  rows: PresiderImportRow[]; // weekend Masses that match the weekly pattern
+  skipped: { date: string; time: string; initials: string; reason: string }[];
+};
+
+// One uploaded presider schedule PDF, parsed and waiting for review (or already applied).
+export const presiderImports = pgTable("presider_imports", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  createdById: uuid("created_by_id").references(() => users.id, { onDelete: "set null" }),
+  fileName: text("file_name").notNull(),
+  payload: jsonb("payload").$type<PresiderImportPayload>().notNull(),
+  appliedAt: timestamp("applied_at", { withTimezone: true }),
+  summary: text("summary"),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
 

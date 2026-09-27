@@ -22,7 +22,17 @@ export default async function SchedulePage({ searchParams }: { searchParams: Pro
 
   return (
     <>
-      <PageTitle title="Schedule" subtitle="Volunteers see published Masses only." />
+      <PageTitle
+        title="Schedule"
+        subtitle="Volunteers see published Masses only."
+        actions={
+          admin && (
+            <Link href="/admin/schedule/presiders" className="btn-ghost">
+              Presider schedule
+            </Link>
+          )
+        }
+      />
       <Flash sp={sp} />
 
       <div className="grid gap-4 lg:grid-cols-3">
@@ -149,7 +159,7 @@ export default async function SchedulePage({ searchParams }: { searchParams: Pro
                 <input type="date" name="date" className="input" required />
                 <input type="time" name="time" className="input" required />
               </div>
-              <input name="title" className="input" placeholder="Title, e.g. Christmas Eve" />
+              <input name="title" className="input" placeholder="Title" aria-label="Title" />
               <input name="location" className="input" placeholder="Location" defaultValue="Church" />
               <SubmitButton className="btn-ghost">Add Mass</SubmitButton>
             </form>

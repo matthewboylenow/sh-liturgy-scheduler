@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
-import { and, eq, gte, inArray, lte, ne } from "drizzle-orm";
+import { and, eq, gte, inArray, isNull, lte, ne } from "drizzle-orm";
 import { randomBytes } from "crypto";
 import { db } from "@/db";
 import {
@@ -20,7 +20,9 @@ import {
 import { requireAdmin, requireStaff, createInvite, sendInvite, sha256, canManageMinistry, hashPassword } from "@/lib/auth";
 import { normalizeEmail, normalizePhone } from "@/lib/phone";
 import { datesForWeekday, localToUtc, DAY_NAMES, fmtTime } from "@/lib/time";
-import { claimPosition, changeAssignment, ScheduleError } from "@/lib/schedule";
+import { claimPosition, changeAssignment, createLiturgyFromMassTime, ScheduleError } from "@/lib/schedule";
+import { parsePresiderPdf, applyPresiderImport } from "@/lib/presiders";
+import { presiderImports } from "@/db/schema";
 
 function slugify(s: string) {
   return s
@@ -383,22 +385,7 @@ export async function generateLiturgies(formData: FormData) {
   for (const mt of times) {
     for (const date of datesForWeekday(from, to, mt.dayOfWeek)) {
       if (have.has(`${date}|${mt.id}`)) continue;
-      const [l] = await db
-        .insert(liturgies)
-        .values({
-          massTimeId: mt.id,
-          date,
-          time: mt.time,
-          startsAt: localToUtc(date, mt.time),
-          label: mt.label,
-          location: mt.location,
-          status: publish ? "published" : "draft",
-        })
-        .returning();
-      const rows = mt.templates
-        .filter((t) => t.ministry.active)
-        .flatMap((t) => Array.from({ length: t.count }, (_, i) => ({ liturgyId: l.id, ministryId: t.ministryId, sortOrder: i, label: t.count > 1 ? `#${i + 1}` : null })));
-      if (rows.length) await db.insert(positions).values(rows);
+      await createLiturgyFromMassTime(mt, date, { status: publish ? "published" : "draft" });
       created++;
     }
   }
@@ -575,4 +562,50 @@ export async function deleteKiosk(formData: FormData) {
   await db.delete(kiosks).where(eq(kiosks.id, str(formData, "id")));
   revalidatePath("/admin/kiosks");
   ok("/admin/kiosks", "Kiosk removed.");
+}
+
+// ---------------- Presider schedule import ----------------
+
+/** Upload the presider PDF, parse it, and go to the review page. Nothing is written to the schedule yet. */
+export async function uploadPresiderSchedule(formData: FormData) {
+  const actor = await requireAdmin();
+  const file = formData.get("pdf");
+  const path = "/admin/schedule/presiders";
+  if (!(file instanceof File) || file.size === 0) fail(path, "Choose a PDF first.");
+  if (file.type !== "application/pdf" && !file.name.toLowerCase().endsWith(".pdf")) fail(path, "That file is not a PDF.");
+  if (file.size > 6 * 1024 * 1024) fail(path, "PDFs up to 6 MB.");
+  let payload;
+  try {
+    payload = await parsePresiderPdf(Buffer.from(await file.arrayBuffer()));
+  } catch (e) {
+    fail(path, e instanceof Error ? e.message : "Could not read that PDF.");
+  }
+  if (payload.rows.length === 0) fail(path, "No weekend Masses found in that PDF.");
+  const [row] = await db.insert(presiderImports).values({ createdById: actor.id, fileName: file.name, payload }).returning();
+  await db.insert(auditLog).values({ actorId: actor.id, action: "presiders.upload", subjectType: "presider_import", subjectId: row.id, detail: file.name });
+  redirect(`/admin/schedule/presiders/${row.id}`);
+}
+
+/** Apply a reviewed import: fields named map:<INITIALS> hold a user id or "new". */
+export async function confirmPresiderImport(formData: FormData) {
+  const actor = await requireAdmin();
+  const id = str(formData, "id");
+  const path = `/admin/schedule/presiders/${id}`;
+  const mapping: Record<string, string> = {};
+  for (const [k, v] of formData.entries()) if (k.startsWith("map:")) mapping[k.slice(4)] = String(v);
+  let result;
+  try {
+    result = await applyPresiderImport(id, mapping, actor.id);
+  } catch (e) {
+    if (e instanceof ScheduleError) fail(path, e.message);
+    throw e;
+  }
+  revalidatePath("/admin/schedule");
+  ok(`/admin/schedule?from=${result.from}&to=${result.to}`, result.summary);
+}
+
+export async function discardPresiderImport(formData: FormData) {
+  await requireAdmin();
+  await db.delete(presiderImports).where(and(eq(presiderImports.id, str(formData, "id")), isNull(presiderImports.appliedAt)));
+  ok("/admin/schedule/presiders", "Discarded.");
 }

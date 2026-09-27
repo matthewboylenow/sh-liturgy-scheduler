@@ -1,7 +1,7 @@
 import { and, asc, eq, gte, inArray, lte, ne, sql } from "drizzle-orm";
 import { db } from "@/db";
-import { assignments, liturgies, positions, ministries, ministryMembers, users, auditLog, type Liturgy } from "@/db/schema";
-import { addDaysLocal, todayLocal } from "./time";
+import { assignments, liturgies, positions, ministries, ministryMembers, users, auditLog, type Liturgy, type MassTime } from "@/db/schema";
+import { addDaysLocal, localToUtc, todayLocal } from "./time";
 import type { SessionUser } from "./auth";
 import { canManageMinistry } from "./auth";
 
@@ -97,6 +97,32 @@ export function coverage(l: LiturgyFull) {
   }).length;
   const subs = l.positions.filter((p) => liveAssignment(p)?.status === "sub_requested").length;
   return { total, filled, open: total - filled, subs };
+}
+
+/** Create one dated Mass from a Mass time, with one position row per seat in its template. */
+export async function createLiturgyFromMassTime(
+  mt: MassTime & { templates: { ministryId: string; count: number; ministry: { active: boolean } }[] },
+  date: string,
+  opts: { status?: Liturgy["status"]; title?: string | null } = {},
+) {
+  const [l] = await db
+    .insert(liturgies)
+    .values({
+      massTimeId: mt.id,
+      date,
+      time: mt.time,
+      startsAt: localToUtc(date, mt.time),
+      label: mt.label,
+      location: mt.location,
+      title: opts.title ?? null,
+      status: opts.status ?? "draft",
+    })
+    .returning();
+  const rows = mt.templates
+    .filter((t) => t.ministry.active)
+    .flatMap((t) => Array.from({ length: t.count }, (_, i) => ({ liturgyId: l.id, ministryId: t.ministryId, sortOrder: i, label: t.count > 1 ? `#${i + 1}` : null })));
+  if (rows.length) await db.insert(positions).values(rows);
+  return l;
 }
 
 export class ScheduleError extends Error {}

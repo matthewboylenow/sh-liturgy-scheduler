@@ -8,7 +8,7 @@ import "dotenv/config";
 import { eq } from "drizzle-orm";
 import bcrypt from "bcryptjs";
 import { db } from "../src/db";
-import { users, ministries, massTimes, positionTemplates } from "../src/db/schema";
+import { users, ministries, ministryMembers, massTimes, positionTemplates } from "../src/db/schema";
 
 const MINISTRIES = [
   { name: "Presider", shortName: "Presider", slug: "presider", color: "#6B21A8", sortOrder: 10, checkInEnabled: false, description: "Celebrant for the Mass" },
@@ -34,6 +34,9 @@ const MASS_TIMES = [
 // Default positions per Mass, by ministry slug
 const TEMPLATE: Record<string, number> = { presider: 1, sacristan: 1, lector: 2, em: 4, server: 3, usher: 4, music: 2, media: 1 };
 
+// Clergy who appear on the presider schedule. Inactive: assignable by staff, never sign in.
+const CLERGY = [{ firstName: "Fr. Tom", lastName: "Nydegger", initials: "TPN", notes: "Pastor" }];
+
 async function main() {
   console.log("Seeding ministries...");
   for (const m of MINISTRIES) {
@@ -52,6 +55,14 @@ async function main() {
       if (!ministryId) continue;
       await db.insert(positionTemplates).values({ massTimeId: id, ministryId, count }).onConflictDoNothing();
     }
+  }
+
+  console.log("Seeding clergy...");
+  const presiderId = bySlug.get("presider");
+  for (const c of CLERGY) {
+    const exists = await db.select({ id: users.id }).from(users).where(eq(users.initials, c.initials));
+    const id = exists[0]?.id ?? (await db.insert(users).values({ ...c, role: "volunteer", status: "inactive", notifySms: false, notifyEmail: false }).returning())[0].id;
+    if (presiderId) await db.insert(ministryMembers).values({ userId: id, ministryId: presiderId }).onConflictDoNothing();
   }
 
   const email = process.env.ADMIN_EMAIL?.toLowerCase();
