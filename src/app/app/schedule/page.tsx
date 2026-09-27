@@ -4,7 +4,7 @@ import { PageTitle } from "@/components/shell";
 import { Alert } from "@/components/ui";
 import { LiturgyCard } from "@/components/liturgy-card";
 import Link from "next/link";
-import { weekendOf } from "@/lib/time";
+import { blackoutsFor, isAway } from "@/lib/blackouts";
 
 export const metadata = { title: "Sign up" };
 
@@ -22,8 +22,7 @@ export default async function SchedulePage({ searchParams }: { searchParams: Pro
     return true;
   });
 
-  // Weekends where the viewer already holds a seat: one seat per weekend.
-  const takenWeekends = new Set(all.filter((l) => l.positions.some((p) => liveAssignment(p)?.userId === user.id)).map((l) => weekendOf(l.date)[0]));
+  const myBlackouts = await blackoutsFor(user.id);
   // Group by weekend (Saturday date if Sat, else the Sunday itself)
   const weekends = new Map<string, typeof list>();
   for (const l of list) {
@@ -71,7 +70,7 @@ export default async function SchedulePage({ searchParams }: { searchParams: Pro
             <h2 className="mb-3 text-base font-semibold uppercase tracking-wide text-muted">Weekend of {new Date(key + "T12:00:00").toLocaleDateString("en-US", { month: "long", day: "numeric" })}</h2>
             <div className="grid gap-4 lg:grid-cols-2">
               {ls.map((l) => (
-                <LiturgyCard key={l.id} liturgy={l} user={user} returnTo={self} onlyMyMinistries weekendTaken={takenWeekends.has(weekendOf(l.date)[0])} />
+                <LiturgyCard key={l.id} liturgy={l} user={user} returnTo={self} onlyMyMinistries away={isAway(myBlackouts, l.date)} />
               ))}
             </div>
           </section>

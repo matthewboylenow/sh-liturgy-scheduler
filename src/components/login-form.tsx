@@ -7,6 +7,7 @@ const ERRORS: Record<string, string> = {
   no_account: "No account matches that number or email. Contact the parish office.",
   not_staff: "That is a volunteer account. Use the volunteer sign-in.",
   bad_login: "Wrong username or password.",
+  too_many: "Too many attempts. Wait 15 minutes and try again.",
   mfa_no_destination: "This account has no phone or email for the code. Contact the parish office.",
   mfa_expired: "That sign-in timed out. Start again.",
   ms_not_configured: "Microsoft sign-in is not set up yet.",

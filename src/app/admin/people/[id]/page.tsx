@@ -7,7 +7,9 @@ import { users, ministries, auditLog } from "@/db/schema";
 import { PageTitle, StatusPill } from "@/components/shell";
 import { Flash } from "@/components/flash";
 import { SubmitButton } from "@/components/ui";
-import { resendInvite, setTempPassword, updatePerson, signInAs } from "@/app/admin/actions";
+import { resendInvite, setTempPassword, updatePerson, signInAs, addBlackout, removeBlackout } from "@/app/admin/actions";
+import { blackoutsFor } from "@/lib/blackouts";
+import { ConfirmButton } from "@/components/ui";
 import { canManageUser } from "@/lib/auth";
 import { Alert } from "@/components/ui";
 import { formatPhone } from "@/lib/phone";
@@ -23,6 +25,7 @@ export default async function PersonPage({ params, searchParams }: { params: Pro
   if (!p) notFound();
   if (!admin && !p.memberships.some((m) => actor.coordinatorOf.includes(m.ministryId))) notFound();
 
+  const away = await blackoutsFor(id, { upcomingOnly: true });
   const [allMinistries, upcoming, past, log] = await Promise.all([
     db.select().from(ministries).orderBy(asc(ministries.sortOrder)),
     getMyAssignments(id),
@@ -163,6 +166,42 @@ export default async function PersonPage({ params, searchParams }: { params: Pro
                 <SubmitButton className="btn-ghost w-full">Set password and activate</SubmitButton>
               </form>
             )}
+          </div>
+
+          <div className="card p-4">
+            <h2 className="mb-2 text-lg">Away</h2>
+            {away.length === 0 ? <p className="text-sm text-muted">No dates away.</p> : (
+              <ul className="space-y-1 text-sm">
+                {away.map((b) => (
+                  <li key={b.id} className="flex items-center justify-between gap-2">
+                    <span>
+                      {fmtDate(b.fromDate)}{b.toDate !== b.fromDate ? ` to ${fmtDate(b.toDate)}` : ""}
+                      {b.note && <span className="text-xs text-muted"> · {b.note}</span>}
+                    </span>
+                    <form action={removeBlackout}>
+                      <input type="hidden" name="id" value={b.id} />
+                      <input type="hidden" name="return" value={`/admin/people/${p.id}`} />
+                      <ConfirmButton className="btn-ghost px-2 py-0.5 text-xs" message="Remove these away dates?">Remove</ConfirmButton>
+                    </form>
+                  </li>
+                ))}
+              </ul>
+            )}
+            <form action={addBlackout} className="mt-3 space-y-2 border-t border-line pt-3">
+              <input type="hidden" name="userId" value={p.id} />
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <label className="label">From</label>
+                  <input type="date" name="from" className="input" required />
+                </div>
+                <div>
+                  <label className="label">To</label>
+                  <input type="date" name="to" className="input" />
+                </div>
+              </div>
+              <input name="note" className="input" placeholder="Note" aria-label="Note" />
+              <SubmitButton className="btn-ghost w-full">Add away dates</SubmitButton>
+            </form>
           </div>
 
           <div className="card p-4">

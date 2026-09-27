@@ -11,6 +11,7 @@ import { Flash } from "@/components/flash";
 import { SubmitButton, ConfirmButton } from "@/components/ui";
 import { addPosition, assignPerson, deleteLiturgy, removePosition, staffAssignmentAction, updateLiturgy } from "@/app/admin/actions";
 import { formatPhone } from "@/lib/phone";
+import { awayOn } from "@/lib/blackouts";
 
 export default async function LiturgyAdminPage({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<Record<string, string | undefined>> }) {
   const { id } = await params;
@@ -29,6 +30,7 @@ export default async function LiturgyAdminPage({ params, searchParams }: { param
       .filter((g) => canManageMinistry(user, g.ministry.id))
       .map(async (g) => memberLists.set(g.ministry.id, await getMinistryMembers(g.ministry.id))),
   );
+  const awaySet = await awayOn([...memberLists.values()].flat().map((m) => m.id), l.date);
   const self = `/admin/schedule/${id}`;
   const c = coverage(l);
   const past = l.startsAt < new Date();
@@ -124,7 +126,7 @@ export default async function LiturgyAdminPage({ params, searchParams }: { param
                                       .map((m) => (
                                         <option key={m.id} value={m.id} disabled={alreadyHere.has(m.id)}>
                                           {m.lastName}, {m.firstName}
-                                          {alreadyHere.has(m.id) ? " (already serving)" : ""}
+                                          {alreadyHere.has(m.id) ? " (already serving)" : awaySet.has(m.id) ? " (away)" : ""}
                                         </option>
                                       ))}
                                   </select>

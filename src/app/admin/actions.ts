@@ -22,7 +22,7 @@ import { normalizeEmail, normalizePhone } from "@/lib/phone";
 import { datesForWeekday, localToUtc, DAY_NAMES, fmtTime } from "@/lib/time";
 import { claimPosition, changeAssignment, createLiturgyFromMassTime, syncUpcomingToPattern, ScheduleError } from "@/lib/schedule";
 import { parsePresiderPdf, applyPresiderImport } from "@/lib/presiders";
-import { presiderImports } from "@/db/schema";
+import { presiderImports, blackouts } from "@/db/schema";
 
 function slugify(s: string) {
   return s
@@ -652,4 +652,36 @@ export async function returnToOwnAccount() {
   if (u?.impersonatorId) await db.insert(auditLog).values({ actorId: u.impersonatorId, action: "impersonate.stop", subjectType: "user", subjectId: u.id });
   await stopImpersonating();
   redirect("/admin/people");
+}
+
+// ---------------- Blackout dates ----------------
+
+export async function addBlackout(formData: FormData) {
+  const actor = await requireStaff();
+  const userId = str(formData, "userId");
+  const from = str(formData, "from");
+  const to = str(formData, "to") || from;
+  const note = str(formData, "note") || null;
+  const ret = str(formData, "return") || `/admin/people/${userId}`;
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(from) || !/^\d{4}-\d{2}-\d{2}$/.test(to) || to < from) fail(ret, "Pick a valid date range.");
+  const target = await db.query.users.findFirst({ where: eq(users.id, userId), with: { memberships: true } });
+  if (!target) fail("/admin/people", "Person not found.");
+  if (actor.role !== "admin" && !target.memberships.some((m) => actor.coordinatorOf.includes(m.ministryId))) fail(ret, "Not your ministry.");
+  await db.insert(blackouts).values({ userId, fromDate: from, toDate: to, note, createdById: actor.id });
+  await db.insert(auditLog).values({ actorId: actor.id, action: "blackout.add", subjectType: "user", subjectId: userId, detail: `${from}..${to}` });
+  revalidatePath(ret);
+  ok(ret, "Away dates saved.");
+}
+
+export async function removeBlackout(formData: FormData) {
+  const actor = await requireStaff();
+  const id = str(formData, "id");
+  const ret = str(formData, "return") || "/admin/people";
+  const [b] = await db.select().from(blackouts).where(eq(blackouts.id, id));
+  if (!b) fail(ret, "Not found.");
+  const target = await db.query.users.findFirst({ where: eq(users.id, b.userId), with: { memberships: true } });
+  if (actor.role !== "admin" && !target?.memberships.some((m) => actor.coordinatorOf.includes(m.ministryId))) fail(ret, "Not your ministry.");
+  await db.delete(blackouts).where(eq(blackouts.id, id));
+  revalidatePath(ret);
+  ok(ret, "Removed.");
 }

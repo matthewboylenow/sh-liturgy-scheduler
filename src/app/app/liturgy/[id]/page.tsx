@@ -6,8 +6,8 @@ import { PageTitle } from "@/components/shell";
 import { Alert } from "@/components/ui";
 import { LiturgyCard } from "@/components/liturgy-card";
 import { updateAssignment } from "@/app/app/actions";
-import { fmtDateLong, fmtTime, weekendOf } from "@/lib/time";
-import { getLiturgies } from "@/lib/schedule";
+import { fmtDateLong, fmtTime } from "@/lib/time";
+import { blackoutsFor, isAway } from "@/lib/blackouts";
 
 export default async function LiturgyPage({
   params,
@@ -22,9 +22,7 @@ export default async function LiturgyPage({
   const l = await getLiturgy(id);
   if (!l || (l.status !== "published" && user.role === "volunteer")) notFound();
   const mine = l.positions.map((p) => liveAssignment(p)).find((a) => a?.userId === user.id);
-  const [wkFrom, wkTo] = weekendOf(l.date);
-  const weekend = await getLiturgies({ from: wkFrom, to: wkTo });
-  const weekendTaken = weekend.some((w) => w.id !== l.id && w.positions.some((p) => liveAssignment(p)?.userId === user.id));
+  const away = isAway(await blackoutsFor(user.id), l.date);
   const self = `/app/liturgy/${id}`;
 
   return (
@@ -92,7 +90,7 @@ export default async function LiturgyPage({
           </div>
         </div>
       )}
-      <LiturgyCard liturgy={l} user={user} returnTo={self} weekendTaken={weekendTaken} />
+      <LiturgyCard liturgy={l} user={user} returnTo={self} away={away} />
     </>
   );
 }

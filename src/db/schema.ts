@@ -256,6 +256,38 @@ export const kiosks = pgTable("kiosks", {
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
 
+// ---------- Blackout dates ----------
+
+// "I am away": no sign-ups, no open-slot texts, and a warning in the assign dropdown for those dates.
+export const blackouts = pgTable(
+  "blackouts",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    fromDate: date("from_date").notNull(), // inclusive, YYYY-MM-DD local
+    toDate: date("to_date").notNull(), // inclusive
+    note: text("note"),
+    createdById: uuid("created_by_id").references(() => users.id, { onDelete: "set null" }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [index("blackouts_user_idx").on(t.userId), index("blackouts_dates_idx").on(t.fromDate, t.toDate)],
+);
+
+// ---------- Login throttling ----------
+
+// One row per failed password attempt; counted per identifier and per IP over a 15 minute window.
+export const loginAttempts = pgTable(
+  "login_attempts",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    key: text("key").notNull(), // "id:<identifier>" or "ip:<address>"
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [index("login_attempts_key_idx").on(t.key, t.createdAt)],
+);
+
 // ---------- Presider schedule imports ----------
 
 export type PresiderImportRow = {

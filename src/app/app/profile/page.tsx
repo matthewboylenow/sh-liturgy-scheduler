@@ -1,7 +1,9 @@
 import { requireUser } from "@/lib/auth";
 import { PageTitle } from "@/components/shell";
 import { Alert, SubmitButton } from "@/components/ui";
-import { changePassword, confirmContactChange, setMfa, updateProfile } from "@/app/app/actions";
+import { changePassword, confirmContactChange, setMfa, updateProfile, addMyBlackout, removeMyBlackout } from "@/app/app/actions";
+import { blackoutsFor } from "@/lib/blackouts";
+import { fmtDate } from "@/lib/time";
 import { formatPhone } from "@/lib/phone";
 
 export const metadata = { title: "Profile" };
@@ -9,8 +11,10 @@ export const metadata = { title: "Profile" };
 export default async function ProfilePage({ searchParams }: { searchParams: Promise<Record<string, string | undefined>> }) {
   const sp = await searchParams;
   const user = await requireUser();
+  const away = await blackoutsFor(user.id, { upcomingOnly: true });
   const OK: Record<string, string> = {
     saved: "Saved.",
+    away: "Away dates saved. You will not get open-slot texts for them.",
     verified: "Verified and saved.",
     password: "Password updated.",
   };
@@ -89,6 +93,40 @@ export default async function ProfilePage({ searchParams }: { searchParams: Prom
             </div>
             <SubmitButton className="btn-ghost">Save password</SubmitButton>
           </form>
+
+          <div className="card space-y-3 p-4">
+            <h2 className="text-lg">Dates I am away</h2>
+            {away.length > 0 && (
+              <ul className="space-y-1 text-sm">
+                {away.map((b) => (
+                  <li key={b.id} className="flex items-center justify-between gap-2">
+                    <span>
+                      {fmtDate(b.fromDate)}{b.toDate !== b.fromDate ? ` to ${fmtDate(b.toDate)}` : ""}
+                      {b.note && <span className="text-xs text-muted"> · {b.note}</span>}
+                    </span>
+                    <form action={removeMyBlackout}>
+                      <input type="hidden" name="id" value={b.id} />
+                      <button className="btn-ghost px-2 py-0.5 text-xs">Remove</button>
+                    </form>
+                  </li>
+                ))}
+              </ul>
+            )}
+            <form action={addMyBlackout} className="space-y-2">
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <label className="label">From</label>
+                  <input type="date" name="from" className="input" required />
+                </div>
+                <div>
+                  <label className="label">To</label>
+                  <input type="date" name="to" className="input" />
+                </div>
+              </div>
+              <input name="note" className="input" placeholder="Note" aria-label="Note" />
+              <SubmitButton className="btn-ghost">Add</SubmitButton>
+            </form>
+          </div>
 
           <form action={setMfa} className="card space-y-3 p-4">
             <h2 className="text-lg">Two-step sign-in</h2>

@@ -2,9 +2,9 @@
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
-import { eq } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import { db } from "@/db";
-import { users } from "@/db/schema";
+import { users, blackouts, auditLog } from "@/db/schema";
 import { notifyMinistryOpenSlot } from "@/lib/alerts";
 import { requireUser, hashPassword, verifyPassword, issueOtp, verifyOtp } from "@/lib/auth";
 import { claimPosition, changeAssignment, ScheduleError } from "@/lib/schedule";
@@ -122,5 +122,24 @@ export async function setMfa(formData: FormData) {
   const user = await requireUser();
   await db.update(users).set({ mfaRequired: formData.get("mfa") === "on", updatedAt: new Date() }).where(eq(users.id, user.id));
   revalidatePath("/app/profile");
+  redirect("/app/profile?ok=saved");
+}
+
+export async function addMyBlackout(formData: FormData) {
+  const user = await requireUser();
+  const from = String(formData.get("from") ?? "");
+  const to = String(formData.get("to") ?? "") || from;
+  const note = String(formData.get("note") ?? "").trim() || null;
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(from) || !/^\d{4}-\d{2}-\d{2}$/.test(to) || to < from) redirect("/app/profile?error=Pick+a+valid+date+range.");
+  await db.insert(blackouts).values({ userId: user.id, fromDate: from, toDate: to, note, createdById: user.id });
+  await db.insert(auditLog).values({ actorId: user.id, action: "blackout.add", subjectType: "user", subjectId: user.id, detail: `${from}..${to}` });
+  revalidatePath("/app");
+  redirect("/app/profile?ok=away");
+}
+
+export async function removeMyBlackout(formData: FormData) {
+  const user = await requireUser();
+  await db.delete(blackouts).where(and(eq(blackouts.id, String(formData.get("id"))), eq(blackouts.userId, user.id)));
+  revalidatePath("/app");
   redirect("/app/profile?ok=saved");
 }

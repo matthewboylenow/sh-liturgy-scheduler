@@ -1,10 +1,11 @@
 import { and, eq, gte, inArray, ne, lte } from "drizzle-orm";
 import { db } from "@/db";
-import { users, ministries, ministryMembers, assignments, positions, liturgies, notificationLog } from "@/db/schema";
+import { users, ministries, ministryMembers, assignments, positions, liturgies, notificationLog, blackouts } from "@/db/schema";
 import { sendSms, sendEmail, emailShell } from "./notify";
 import { env } from "./env";
 import { fmtDateLong, fmtTime, fmtDate, addDaysLocal, todayLocal } from "./time";
 import { getLiturgies, liveAssignment } from "./schedule";
+import { awayOn } from "./blackouts";
 
 /** Tell everyone else in a ministry that a specific slot just opened. */
 export async function notifyMinistryOpenSlot(ministryId: string, liturgy: { id: string; date: string; time: string }, excludeUserId?: string) {
@@ -14,12 +15,13 @@ export async function notifyMinistryOpenSlot(ministryId: string, liturgy: { id: 
     .from(ministryMembers)
     .innerJoin(users, eq(users.id, ministryMembers.userId))
     .where(eq(ministryMembers.ministryId, ministryId));
+  const away = await awayOn(members.map(({ u }) => u.id), liturgy.date);
   const when = `${fmtDateLong(liturgy.date)} at ${fmtTime(liturgy.time)}`;
   const url = `${env.appUrl()}/app/liturgy/${liturgy.id}`;
   const text = `${env.parishName()} Liturgy: ${m?.shortName ?? "a"} slot open for ${when}. Take it: ${url}`;
   await Promise.all(
     members
-      .filter(({ u }) => u.id !== excludeUserId && u.status === "active")
+      .filter(({ u }) => u.id !== excludeUserId && u.status === "active" && !away.has(u.id))
       .map(async ({ u }) => {
         if (u.notifySms && u.phone) return sendSms(u.phone, text, { userId: u.id, kind: "open_slot" });
         if (u.notifyEmail && u.email)
@@ -85,13 +87,13 @@ export async function sendOpenSlotDigests(daysAhead = 10) {
   const from = todayLocal();
   const list = await getLiturgies({ from: addDaysLocal(from, 1), to: addDaysLocal(from, daysAhead), statuses: ["published"] });
   // ministryId -> list of open slot descriptions
-  const openByMinistry = new Map<string, { liturgyId: string; text: string }[]>();
+  const openByMinistry = new Map<string, { liturgyId: string; date: string; text: string }[]>();
   for (const l of list) {
     for (const p of l.positions) {
       const a = liveAssignment(p);
       if (a && a.status !== "sub_requested") continue;
       const arr = openByMinistry.get(p.ministryId) ?? [];
-      arr.push({ liturgyId: l.id, text: `${fmtDate(l.date)} ${fmtTime(l.time)} ${p.ministry.shortName}${a ? " (sub needed)" : ""}` });
+      arr.push({ liturgyId: l.id, date: l.date, text: `${fmtDate(l.date)} ${fmtTime(l.time)} ${p.ministry.shortName}${a ? " (sub needed)" : ""}` });
       openByMinistry.set(p.ministryId, arr);
     }
   }
@@ -110,11 +112,13 @@ export async function sendOpenSlotDigests(daysAhead = 10) {
     .where(and(eq(notificationLog.kind, "open_slots_digest"), gte(notificationLog.createdAt, new Date(Date.now() - 20 * 3600_000))));
   const recentSet = new Set(recent.map((r) => r.userId));
 
+  const allBlackouts = await db.select().from(blackouts).where(inArray(blackouts.userId, [...new Set(members.map((m) => m.u.id))]));
   const perUser = new Map<string, { u: typeof users.$inferSelect; items: Set<string> }>();
   for (const { u, ministryId } of members) {
     if (u.status !== "active" || recentSet.has(u.id)) continue;
     const entry = perUser.get(u.id) ?? { u, items: new Set<string>() };
-    for (const s of openByMinistry.get(ministryId) ?? []) entry.items.add(s.text);
+    const mine = allBlackouts.filter((b) => b.userId === u.id);
+    for (const s of openByMinistry.get(ministryId) ?? []) if (!mine.some((b) => b.fromDate <= s.date && s.date <= b.toDate)) entry.items.add(s.text);
     perUser.set(u.id, entry);
   }
 

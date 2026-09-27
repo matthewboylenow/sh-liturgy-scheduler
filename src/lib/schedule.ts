@@ -1,8 +1,9 @@
 import { and, asc, eq, gte, inArray, lte, ne, sql } from "drizzle-orm";
 import { db } from "@/db";
 import { assignments, liturgies, positions, ministries, ministryMembers, users, auditLog, type Liturgy, type MassTime } from "@/db/schema";
-import { addDaysLocal, localToUtc, todayLocal, weekendOf } from "./time";
+import { addDaysLocal, localToUtc, todayLocal } from "./time";
 import type { SessionUser } from "./auth";
+import { onBlackout } from "./blackouts";
 import { canManageMinistry } from "./auth";
 
 export type PositionWithAssignment = {
@@ -207,18 +208,15 @@ export async function claimPosition(user: SessionUser, positionId: string, actor
   if (live && live.userId === user.id) throw new ScheduleError("You already have that slot.");
   if (live && live.status !== "sub_requested") throw new ScheduleError("That slot is taken.");
 
-  // One seat per person per weekend (Saturday vigil through Sunday). Staff can override by assigning directly.
-  const [wkFrom, wkTo] = weekendOf(pos.liturgy.date);
+  // One seat per person per Mass. Serving Saturday and again Sunday is allowed.
   const already = await db
-    .select({ id: assignments.id, date: liturgies.date, time: liturgies.time })
+    .select({ id: assignments.id })
     .from(assignments)
     .innerJoin(positions, eq(positions.id, assignments.positionId))
-    .innerJoin(liturgies, eq(liturgies.id, positions.liturgyId))
-    .where(and(gte(liturgies.date, wkFrom), lte(liturgies.date, wkTo), ne(liturgies.status, "cancelled"), eq(assignments.userId, user.id), ne(assignments.status, "declined")))
+    .where(and(eq(positions.liturgyId, pos.liturgyId), eq(assignments.userId, user.id), ne(assignments.status, "declined")))
     .limit(1);
-  if (already[0] && isSelf) {
-    throw new ScheduleError(already[0].date === pos.liturgy.date && already[0].time === pos.liturgy.time ? "You are already serving at that Mass." : "You are already serving that weekend. One seat per weekend.");
-  }
+  if (already[0] && isSelf) throw new ScheduleError("You are already serving at that Mass.");
+  if (isSelf && (await onBlackout(user.id, pos.liturgy.date))) throw new ScheduleError("You marked yourself away on that date.");
 
   if (live) {
     // taking over a sub request

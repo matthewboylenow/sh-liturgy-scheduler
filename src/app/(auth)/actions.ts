@@ -7,6 +7,9 @@ import { users, invites, auditLog } from "@/db/schema";
 import {
   createSession,
   deviceTrusted,
+  loginThrottled,
+  recordFailedLogin,
+  clearFailedLogins,
   trustDevice,
   hashPassword,
   issueOtp,
@@ -74,6 +77,7 @@ export async function passwordLogin(formData: FormData) {
   const area = formData.get("area") === "admin" ? "admin" : "app";
   const loginPath = area === "admin" ? "/admin/login" : "/login";
 
+  if (!identifier || (await loginThrottled(identifier))) redirect(`${loginPath}?error=too_many&tab=password`);
   const phone = normalizePhone(identifier);
   const email = normalizeEmail(identifier);
   const conds = [eq(users.username, identifier.toLowerCase())];
@@ -83,7 +87,11 @@ export async function passwordLogin(formData: FormData) {
   const found = await db.select().from(users).where(or(...conds)).limit(1);
   const user = found[0];
   const ok = user ? await verifyPassword(password, user.passwordHash) : false;
-  if (!user || !ok || user.status !== "active") redirect(`${loginPath}?error=bad_login&tab=password`);
+  if (!user || !ok || user.status !== "active") {
+    await recordFailedLogin(identifier);
+    redirect(`${loginPath}?error=bad_login&tab=password`);
+  }
+  await clearFailedLogins(identifier);
   if (area === "admin" && user.role === "volunteer") redirect(`${loginPath}?error=not_staff&tab=password`);
 
   const needsMfa = (user.mfaRequired || user.role === "admin" || user.role === "coordinator") && !(await deviceTrusted(user.id));

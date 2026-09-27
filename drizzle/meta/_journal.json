@@ -29,6 +29,13 @@
       "when": 1790550641863,
       "tag": "0003_super_admin_tags_impersonation",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1790551760685,
+      "tag": "0004_blackouts_login_attempts",
+      "breakpoints": true
     }
   ]
 }

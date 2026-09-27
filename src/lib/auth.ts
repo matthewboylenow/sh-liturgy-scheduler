@@ -3,10 +3,10 @@ import { cache } from "react";
 import { createHash, randomBytes, randomInt } from "crypto";
 import bcrypt from "bcryptjs";
 import { SignJWT, jwtVerify } from "jose";
-import { and, eq, gt, isNull } from "drizzle-orm";
+import { and, eq, gt, inArray, isNull } from "drizzle-orm";
 import { redirect } from "next/navigation";
 import { db } from "@/db";
-import { users, sessions, otpCodes, ministryMembers, invites, type User } from "@/db/schema";
+import { users, sessions, otpCodes, ministryMembers, invites, loginAttempts, type User } from "@/db/schema";
 import { env } from "./env";
 import { sendSms, sendEmail, emailShell } from "./notify";
 
@@ -18,6 +18,9 @@ const SESSION_DAYS = 30;
 const TRUST_DAYS = 30;
 const OTP_MINUTES = 10;
 const OTP_MAX_ATTEMPTS = 5;
+const LOGIN_WINDOW_MIN = 15;
+const LOGIN_MAX_PER_ID = 10;
+const LOGIN_MAX_PER_IP = 30;
 
 export function sha256(v: string): string {
   return createHash("sha256").update(v).digest("hex");
@@ -35,6 +38,35 @@ export async function hashPassword(pw: string) {
 export async function verifyPassword(pw: string, hash: string | null) {
   if (!hash) return false;
   return bcrypt.compare(pw, hash);
+}
+
+// ---------- Password attempt throttling ----------
+
+async function clientIp() {
+  const h = await headers();
+  return (h.get("x-forwarded-for") ?? "").split(",")[0].trim() || h.get("x-real-ip") || "unknown";
+}
+
+/** True when this identifier or this IP has failed too often in the last 15 minutes. */
+export async function loginThrottled(identifier: string): Promise<boolean> {
+  const since = new Date(Date.now() - LOGIN_WINDOW_MIN * 60_000);
+  const ip = await clientIp();
+  const rows = await db
+    .select({ key: loginAttempts.key })
+    .from(loginAttempts)
+    .where(and(inArray(loginAttempts.key, [`id:${identifier.toLowerCase()}`, `ip:${ip}`]), gt(loginAttempts.createdAt, since)));
+  const byId = rows.filter((r) => r.key.startsWith("id:")).length;
+  const byIp = rows.filter((r) => r.key.startsWith("ip:")).length;
+  return byId >= LOGIN_MAX_PER_ID || byIp >= LOGIN_MAX_PER_IP;
+}
+
+export async function recordFailedLogin(identifier: string) {
+  const ip = await clientIp();
+  await db.insert(loginAttempts).values([{ key: `id:${identifier.toLowerCase()}` }, { key: `ip:${ip}` }]);
+}
+
+export async function clearFailedLogins(identifier: string) {
+  await db.delete(loginAttempts).where(eq(loginAttempts.key, `id:${identifier.toLowerCase()}`));
 }
 
 // ---------- Sessions ----------
