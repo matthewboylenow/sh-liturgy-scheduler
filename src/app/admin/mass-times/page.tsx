@@ -60,12 +60,12 @@ export default async function MassTimesPage({ searchParams }: { searchParams: Pr
                       <td key={m.id} className="px-1 text-center align-top">
                         <div className="inline-grid gap-1">
                           {rolesOf(m).map((role) => (
-                            <label key={role} className="flex items-center justify-between gap-2 text-xs text-muted">
+                            <label key={role} className="flex items-center justify-between gap-1.5 text-xs text-muted">
                               {role && <span className="whitespace-nowrap">{role}</span>}
                               <select
                                 name={`count:${t.id}:${m.id}:${encodeURIComponent(role)}`}
                                 defaultValue={tmap.get(`${t.id}:${m.id}:${role}`) ?? 0}
-                                className="input min-w-16 w-16 px-1 py-1.5 text-center"
+                                className="input min-w-14 w-14 px-1 py-1.5 text-center"
                                 aria-label={`${role ? `${m.shortName} ${role}` : m.shortName} at ${t.label}`}
                               >
                                 {COUNTS.map((n) => (
@@ -79,7 +79,7 @@ export default async function MassTimesPage({ searchParams }: { searchParams: Pr
                         </div>
                       </td>
                     ))}
-                    <td>
+                    <td className="align-top">
                       <div className="flex justify-end gap-1">
                         <a href={`/admin/mass-times?edit=${t.id}`} className="btn-ghost px-2 py-1 text-xs">
                           Edit
