@@ -17,12 +17,15 @@ export function LiturgyCard({
   returnTo,
   onlyMyMinistries = false,
   compact = false,
+  weekendTaken = false,
 }: {
   liturgy: LiturgyFull;
   user: SessionUser;
   returnTo: string;
   onlyMyMinistries?: boolean;
   compact?: boolean;
+  /** The viewer already holds a seat somewhere this weekend, so no sign-up buttons here. */
+  weekendTaken?: boolean;
 }) {
   const groups = groupByMinistry(liturgy).filter((g) => !onlyMyMinistries || user.ministryIds.includes(g.ministry.id));
   const cov = coverage(liturgy);
@@ -39,7 +42,8 @@ export function LiturgyCard({
           <div className="text-xs text-muted">
             {liturgy.title ? `${liturgy.title} · ` : ""}
             {liturgy.location}
-            {servingHere && <span className="ml-2 pill bg-green-100 text-green-800">You&apos;re serving</span>}
+            {servingHere && <span className="ml-2 pill bg-green-100 text-green-800">You are serving</span>}
+            {!servingHere && weekendTaken && <span className="ml-2 text-muted">You are serving elsewhere this weekend</span>}
           </div>
         </div>
         <div className="text-xs text-muted">
@@ -66,7 +70,7 @@ export function LiturgyCard({
                   {g.positions.map((p) => {
                     const a = liveAssignment(p);
                     const isMe = a?.userId === user.id;
-                    const canClaim = mine && !past && liturgy.status === "published" && (!a || (a.status === "sub_requested" && !isMe)) && !servingHere;
+                    const canClaim = mine && !past && liturgy.status === "published" && (!a || (a.status === "sub_requested" && !isMe)) && !servingHere && !weekendTaken;
                     return (
                       <li key={p.id} className="flex items-center justify-between gap-2 rounded border border-line/70 px-2.5 py-1.5 text-sm">
                         <div className="min-w-0">

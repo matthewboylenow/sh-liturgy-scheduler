@@ -6,6 +6,8 @@ import { db } from "@/db";
 import { users, invites, auditLog } from "@/db/schema";
 import {
   createSession,
+  deviceTrusted,
+  trustDevice,
   hashPassword,
   issueOtp,
   readMfaPending,
@@ -84,7 +86,7 @@ export async function passwordLogin(formData: FormData) {
   if (!user || !ok || user.status !== "active") redirect(`${loginPath}?error=bad_login&tab=password`);
   if (area === "admin" && user.role === "volunteer") redirect(`${loginPath}?error=not_staff&tab=password`);
 
-  const needsMfa = user.mfaRequired || user.role === "admin" || user.role === "coordinator";
+  const needsMfa = (user.mfaRequired || user.role === "admin" || user.role === "coordinator") && !(await deviceTrusted(user.id));
   if (needsMfa) {
     const dest = user.phone ?? user.email;
     if (!dest) redirect(`${loginPath}?error=mfa_no_destination&tab=password`);
@@ -109,7 +111,8 @@ export async function verifyMfaCode(formData: FormData) {
     redirect(`/login/verify?mfa=1&dest=${encodeURIComponent(dest)}&area=${area}&error=${encodeURIComponent(r.error ?? "bad_code")}`);
   }
   await createSession(pending.uid);
-  await db.insert(auditLog).values({ actorId: pending.uid, action: "login.password+mfa" });
+  if (formData.get("remember") === "on") await trustDevice(pending.uid);
+  await db.insert(auditLog).values({ actorId: pending.uid, action: formData.get("remember") === "on" ? "login.password+mfa (device remembered)" : "login.password+mfa" });
   redirect(pending.next);
 }
 
@@ -179,5 +182,5 @@ export async function acceptInvite(formData: FormData) {
   await db.update(invites).set({ acceptedAt: new Date() }).where(eq(invites.tokenHash, sha256(token)));
   await createSession(found.user.id);
   await db.insert(auditLog).values({ actorId: found.user.id, action: "invite.accepted" });
-  redirect(isStaff({ ...found.user, ministryIds: [], coordinatorOf: [] }) ? "/admin" : "/app?welcome=1");
+  redirect(isStaff({ ...found.user, ministryIds: [], coordinatorOf: [], impersonatorId: null }) ? "/admin" : "/app?welcome=1");
 }

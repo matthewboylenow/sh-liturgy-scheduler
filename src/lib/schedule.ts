@@ -1,7 +1,7 @@
 import { and, asc, eq, gte, inArray, lte, ne, sql } from "drizzle-orm";
 import { db } from "@/db";
 import { assignments, liturgies, positions, ministries, ministryMembers, users, auditLog, type Liturgy, type MassTime } from "@/db/schema";
-import { addDaysLocal, localToUtc, todayLocal } from "./time";
+import { addDaysLocal, localToUtc, todayLocal, weekendOf } from "./time";
 import type { SessionUser } from "./auth";
 import { canManageMinistry } from "./auth";
 
@@ -137,6 +137,54 @@ export function rows(mt: { templates: { ministryId: string; role: string; count:
   return out;
 }
 
+/**
+ * Bring every upcoming Mass generated from the pattern in line with the current position counts.
+ * Adds missing seats, relabels kept ones, and removes extra seats only when nobody holds them.
+ */
+export async function syncUpcomingToPattern(from = todayLocal()) {
+  const pattern = await db.query.massTimes.findMany({ with: { templates: { with: { ministry: true } } } });
+  const upcoming = await db.query.liturgies.findMany({
+    where: and(gte(liturgies.date, from), ne(liturgies.status, "cancelled")),
+    with: { positions: { with: { assignments: true } } },
+  });
+  // "#1" and no label are the same seat; "Guitar" and "Guitar 1" are the same seat.
+  const norm = (label: string | null) => (!label ? "#1" : /^#\d+$/.test(label) || /\s\d+$/.test(label) ? label : `${label} 1`);
+  let added = 0, removed = 0, masses = 0;
+  for (const l of upcoming) {
+    const mt = pattern.find((p) => p.id === l.massTimeId);
+    if (!mt) continue;
+    const desired = rows(mt);
+    const existing = [...l.positions];
+    const used = new Set<string>();
+    const inserts: { liturgyId: string; ministryId: string; sortOrder: number; label: string | null }[] = [];
+    let changed = false;
+    for (const d of desired) {
+      const match = existing.find((p) => !used.has(p.id) && p.ministryId === d.ministryId && norm(p.label) === norm(d.label));
+      if (match) {
+        used.add(match.id);
+        if (match.label !== d.label || match.sortOrder !== d.sortOrder) {
+          await db.update(positions).set({ label: d.label, sortOrder: d.sortOrder }).where(eq(positions.id, match.id));
+          changed = true;
+        }
+      } else inserts.push({ liturgyId: l.id, ...d });
+    }
+    for (const p of existing) {
+      if (used.has(p.id)) continue;
+      if (p.assignments.some((a) => a.status !== "declined")) continue; // someone holds it, leave it
+      await db.delete(positions).where(eq(positions.id, p.id));
+      removed++;
+      changed = true;
+    }
+    if (inserts.length) {
+      await db.insert(positions).values(inserts);
+      added += inserts.length;
+      changed = true;
+    }
+    if (changed) masses++;
+  }
+  return { masses, added, removed };
+}
+
 export class ScheduleError extends Error {}
 
 /** Volunteer claims an open (or sub-requested) position. */
@@ -159,14 +207,18 @@ export async function claimPosition(user: SessionUser, positionId: string, actor
   if (live && live.userId === user.id) throw new ScheduleError("You already have that slot.");
   if (live && live.status !== "sub_requested") throw new ScheduleError("That slot is taken.");
 
-  // One live assignment per person per Mass
+  // One seat per person per weekend (Saturday vigil through Sunday). Staff can override by assigning directly.
+  const [wkFrom, wkTo] = weekendOf(pos.liturgy.date);
   const already = await db
-    .select({ id: assignments.id })
+    .select({ id: assignments.id, date: liturgies.date, time: liturgies.time })
     .from(assignments)
     .innerJoin(positions, eq(positions.id, assignments.positionId))
-    .where(and(eq(positions.liturgyId, pos.liturgyId), eq(assignments.userId, user.id), ne(assignments.status, "declined")))
+    .innerJoin(liturgies, eq(liturgies.id, positions.liturgyId))
+    .where(and(gte(liturgies.date, wkFrom), lte(liturgies.date, wkTo), ne(liturgies.status, "cancelled"), eq(assignments.userId, user.id), ne(assignments.status, "declined")))
     .limit(1);
-  if (already[0] && isSelf) throw new ScheduleError("You are already serving at that Mass.");
+  if (already[0] && isSelf) {
+    throw new ScheduleError(already[0].date === pos.liturgy.date && already[0].time === pos.liturgy.time ? "You are already serving at that Mass." : "You are already serving that weekend. One seat per weekend.");
+  }
 
   if (live) {
     // taking over a sub request

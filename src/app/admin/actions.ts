@@ -17,10 +17,10 @@ import {
   kiosks,
   auditLog,
 } from "@/db/schema";
-import { requireAdmin, requireStaff, createInvite, sendInvite, sha256, canManageMinistry, hashPassword } from "@/lib/auth";
+import { requireAdmin, requireStaff, createInvite, sendInvite, sha256, canManageMinistry, canManageUser, hashPassword, impersonate, stopImpersonating, getCurrentUser } from "@/lib/auth";
 import { normalizeEmail, normalizePhone } from "@/lib/phone";
 import { datesForWeekday, localToUtc, DAY_NAMES, fmtTime } from "@/lib/time";
-import { claimPosition, changeAssignment, createLiturgyFromMassTime, ScheduleError } from "@/lib/schedule";
+import { claimPosition, changeAssignment, createLiturgyFromMassTime, syncUpcomingToPattern, ScheduleError } from "@/lib/schedule";
 import { parsePresiderPdf, applyPresiderImport } from "@/lib/presiders";
 import { presiderImports } from "@/db/schema";
 
@@ -48,7 +48,9 @@ export async function createPerson(formData: FormData) {
   const lastName = str(formData, "lastName");
   const phone = normalizePhone(str(formData, "phone"));
   const email = normalizeEmail(str(formData, "email"));
-  const role = actor.role === "admin" ? (str(formData, "role") as "volunteer" | "coordinator" | "admin") || "volunteer" : "volunteer";
+  let role = actor.role === "admin" ? (str(formData, "role") as "volunteer" | "coordinator" | "admin") || "volunteer" : "volunteer";
+  if (role === "admin" && !actor.isSuperAdmin) role = "coordinator";
+  const tags = formData.getAll("tags").map(String).filter(Boolean);
   const ministryIds = formData.getAll("ministryIds").map(String).filter(Boolean);
   const sendNow = formData.get("sendInvite") === "on";
 
@@ -70,7 +72,7 @@ export async function createPerson(formData: FormData) {
 
   const [u] = await db
     .insert(users)
-    .values({ firstName, lastName, phone, email, role, status: "invited", mfaRequired: role !== "volunteer" })
+    .values({ firstName, lastName, phone, email, role, status: "invited", mfaRequired: role !== "volunteer", tags })
     .returning();
   if (ministryIds.length) {
     await db.insert(ministryMembers).values(ministryIds.map((ministryId) => ({ userId: u.id, ministryId })));
@@ -119,7 +121,10 @@ export async function updatePerson(formData: FormData) {
   }
 
   const isAdmin = actor.role === "admin";
+  const mayManage = canManageUser(actor, target);
+  if (isAdmin && !mayManage && target.id !== actor.id) fail(path, "Only a super admin can edit another admin.");
   const updates: Partial<typeof users.$inferInsert> = {
+    tags: isAdmin ? formData.getAll("tags").map(String).filter(Boolean) : target.tags,
     firstName,
     lastName,
     phone,
@@ -133,11 +138,15 @@ export async function updatePerson(formData: FormData) {
   if (isAdmin) {
     const role = str(formData, "role") as "volunteer" | "coordinator" | "admin";
     if (["volunteer", "coordinator", "admin"].includes(role)) {
-      if (target.id === actor.id && role !== "admin") fail(path, "You can't remove your own admin role.");
+      if (target.id === actor.id && role !== "admin") fail(path, "You cannot remove your own admin role.");
+      if ((role === "admin" || target.role === "admin") && role !== target.role && !actor.isSuperAdmin) fail(path, "Only a super admin can grant or remove the admin role.");
       updates.role = role;
       updates.mfaRequired = role !== "volunteer" ? true : formData.get("mfaRequired") === "on";
     }
-    if (["invited", "active", "inactive"].includes(status)) updates.status = status;
+    if (["invited", "active", "inactive"].includes(status)) {
+      if (target.isSuperAdmin && status !== "active" && !actor.isSuperAdmin) fail(path, "Only a super admin can change that account.");
+      updates.status = status;
+    }
   }
   await db.update(users).set(updates).where(eq(users.id, id));
 
@@ -174,6 +183,9 @@ export async function setTempPassword(formData: FormData) {
   const actor = await requireAdmin();
   const id = str(formData, "id");
   const pw = str(formData, "password");
+  const [target] = await db.select().from(users).where(eq(users.id, id));
+  if (!target) fail("/admin/people", "Person not found.");
+  if (!canManageUser(actor, target) && target.id !== actor.id) fail(`/admin/people/${id}`, "Only a super admin can set another admin's password.");
   if (pw.length < 8) fail(`/admin/people/${id}`, "Password needs at least 8 characters.");
   await db.update(users).set({ passwordHash: await hashPassword(pw), status: "active", updatedAt: new Date() }).where(eq(users.id, id));
   await db.insert(auditLog).values({ actorId: actor.id, action: "person.set_password", subjectType: "user", subjectId: id });
@@ -281,10 +293,12 @@ export async function saveMinistry(formData: FormData) {
   const name = str(formData, "name");
   const shortName = str(formData, "shortName");
   if (!name || !shortName) fail("/admin/ministries", "Name and short name are required.");
+  // The slug is an identifier (the presider import and CSV import look ministries up by it); never regenerate it on edit.
+  const existing = id ? (await db.select({ slug: ministries.slug }).from(ministries).where(eq(ministries.id, id)))[0] : null;
   const values = {
     name,
     shortName,
-    slug: slugify(str(formData, "slug") || name),
+    slug: existing?.slug ?? slugify(str(formData, "slug") || shortName),
     description: str(formData, "description") || null,
     color: str(formData, "color") || "#1F346D",
     sortOrder: Number(str(formData, "sortOrder") || 100),
@@ -360,8 +374,14 @@ export async function saveTemplates(formData: FormData) {
         .onConflictDoUpdate({ target: [positionTemplates.massTimeId, positionTemplates.ministryId, positionTemplates.role], set: { count: e.count } });
     }
   }
+  let note = "Position counts saved.";
+  if (formData.get("sync") === "on") {
+    const r = await syncUpcomingToPattern();
+    note += ` Upcoming Masses updated: ${r.added} seat${r.added === 1 ? "" : "s"} added, ${r.removed} removed, across ${r.masses} Mass${r.masses === 1 ? "" : "es"}.`;
+  }
   revalidatePath("/admin/mass-times");
-  ok("/admin/mass-times", "Position counts saved.");
+  revalidatePath("/admin/schedule");
+  ok("/admin/mass-times", note);
 }
 
 // ---------------- Schedule ----------------
@@ -501,7 +521,7 @@ export async function assignPerson(formData: FormData) {
   await db.update(assignments).set({ status: "declined", updatedAt: new Date() }).where(and(eq(assignments.positionId, positionId), ne(assignments.status, "declined")));
   try {
     await claimPosition(
-      { ...target, ministryIds: target.memberships.map((m) => m.ministryId), coordinatorOf: [] },
+      { ...target, ministryIds: target.memberships.map((m) => m.ministryId), coordinatorOf: [], impersonatorId: null },
       positionId,
       actor.id,
     );
@@ -610,4 +630,26 @@ export async function discardPresiderImport(formData: FormData) {
   await requireAdmin();
   await db.delete(presiderImports).where(and(eq(presiderImports.id, str(formData, "id")), isNull(presiderImports.appliedAt)));
   ok("/admin/schedule/presiders", "Discarded.");
+}
+
+// ---------------- Sign in as ----------------
+
+export async function signInAs(formData: FormData) {
+  const actor = await requireAdmin();
+  if (actor.impersonatorId) fail("/admin/people", "You are already signed in as someone else. Return to your own account first.");
+  const id = str(formData, "id");
+  const [target] = await db.select().from(users).where(eq(users.id, id));
+  if (!target) fail("/admin/people", "Person not found.");
+  if (!canManageUser(actor, target) || target.id === actor.id) fail(`/admin/people/${id}`, "You cannot sign in as that account.");
+  if (target.status !== "active") fail(`/admin/people/${id}`, "That account is not active, so it cannot sign in.");
+  await db.insert(auditLog).values({ actorId: actor.id, action: "impersonate.start", subjectType: "user", subjectId: id, detail: `${target.firstName} ${target.lastName}` });
+  await impersonate(actor, id);
+  redirect(target.role === "volunteer" ? "/app" : "/admin");
+}
+
+export async function returnToOwnAccount() {
+  const u = await getCurrentUser();
+  if (u?.impersonatorId) await db.insert(auditLog).values({ actorId: u.impersonatorId, action: "impersonate.stop", subjectType: "user", subjectId: u.id });
+  await stopImpersonating();
+  redirect("/admin/people");
 }

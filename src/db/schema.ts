@@ -49,6 +49,10 @@ export const users = pgTable(
     notifyEmail: boolean("notify_email").notNull().default(true),
     entraOid: text("entra_oid"), // Microsoft Entra object id, staff only
     initials: text("initials"), // as printed on the presider schedule, e.g. TPN
+    // Only super admins can grant or remove the admin role, or edit another admin. Set by hand, never from the UI.
+    isSuperAdmin: boolean("is_super_admin").notNull().default(false),
+    // Free-form tags shown as pills, e.g. "Peer Ministry" for teen volunteers.
+    tags: text("tags").array().notNull().default(sql`'{}'::text[]`),
     notes: text("notes"),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
@@ -73,6 +77,8 @@ export const sessions = pgTable(
     expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
     userAgent: text("user_agent"),
+    // Set when an admin is signed in as this user. Their own session stays alive in a second cookie.
+    impersonatorId: uuid("impersonator_id").references(() => users.id, { onDelete: "cascade" }),
   },
   (t) => [uniqueIndex("sessions_token_idx").on(t.tokenHash), index("sessions_user_idx").on(t.userId)],
 );

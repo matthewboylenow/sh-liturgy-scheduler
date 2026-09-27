@@ -42,6 +42,11 @@ export default async function VerifyPage({ searchParams }: { searchParams: Promi
           required
           autoFocus
         />
+        {mfa && (
+          <label className="flex items-center gap-2 text-sm">
+            <input type="checkbox" name="remember" defaultChecked /> Remember this device for 30 days
+          </label>
+        )}
         <SubmitButton pendingText="Checking">Continue</SubmitButton>
       </form>
       <form action={resendCode} className="mt-4 text-center">

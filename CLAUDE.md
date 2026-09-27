@@ -58,7 +58,9 @@ vercel.json             two crons
 - Mutations are server actions that `redirect()` back with `?ok=` or `?error=` in the query string; pages render them through `<Flash>` or `<Alert>`. No client state libraries.
 - `db` is a lazy Proxy so importing it never fails at build. Neon HTTP driver has no interactive transactions; rely on unique indexes and single statements for atomicity (claimPosition already does).
 - Email/SMS copy lives next to the code that sends it. Keep it short. No em dashes anywhere, in UI or messages. "Saint Helen", never "St. Helen's". "Mass", "slot", "sub". Before writing any user-facing sentence, read "Voice and copy" in DESIGN.md: no helper text that restates the control, no reassurance, no exclamation points, no page subtitles that describe the page.
-- Staff (admin, coordinator) always get an OTP after password. Do not add a bypass.
+- Staff (admin, coordinator) get an OTP after password unless the device carries a valid `sh_trust` cookie ("Remember this device", 30 days, signed JWT). No other bypass.
+- `users.isSuperAdmin` is the only way to grant or remove the admin role or edit another admin; it is set by hand in the database, never from the UI. Admins can sign in as volunteers and leads (People -> "Sign in as"); the admin's own session is parked in `sh_admin_session` and every start/stop is in the audit log.
+- Ministry "leads" are `ministry_members.isCoordinator`; the role enum still says `coordinator`.
 - Kiosk routes authenticate with the `sh_kiosk` cookie only and are limited to today's published Masses. Do not widen that.
 
 ## Verification standard

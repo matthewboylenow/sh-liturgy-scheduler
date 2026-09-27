@@ -1,6 +1,7 @@
 import Link from "next/link";
 import Image from "next/image";
 import { NavLinks } from "@/components/nav-links";
+import { returnToOwnAccount } from "@/app/admin/actions";
 import type { SessionUser } from "@/lib/auth";
 import { env } from "@/lib/env";
 
@@ -18,6 +19,14 @@ export function Shell({
   const isStaff = user.role === "admin" || user.role === "coordinator";
   return (
     <div className="flex min-h-full flex-1 flex-col">
+      {user.impersonatorId && (
+        <form action={returnToOwnAccount} className="flex items-center justify-center gap-3 bg-gold px-4 py-2 text-sm text-navy">
+          <span>
+            Signed in as {user.firstName} {user.lastName}.
+          </span>
+          <button className="rounded-md border border-navy/30 bg-white px-3 py-1 font-semibold">Return to my account</button>
+        </form>
+      )}
       <header className="border-b border-line bg-white">
         <div className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-4 pt-3">
           <Link href={area === "admin" ? "/admin" : "/app"} className="flex items-center gap-2.5">

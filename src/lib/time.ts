@@ -55,6 +55,14 @@ export function datesForWeekday(start: string, end: string, dayOfWeek: number): 
   return out;
 }
 
+/** The Saturday and Sunday dates of the weekend a date belongs to (a Sunday looks back to its vigil). Weekdays stand alone. */
+export function weekendOf(date: string): [string, string] {
+  const dow = parseISO(date).getDay();
+  if (dow === 6) return [date, addDaysLocal(date, 1)];
+  if (dow === 0) return [addDaysLocal(date, -1), date];
+  return [date, date];
+}
+
 export function addDaysLocal(date: string, n: number): string {
   return format(addDays(parseISO(date), n), "yyyy-MM-dd");
 }

@@ -98,8 +98,11 @@ export default async function MassTimesPage({ searchParams }: { searchParams: Pr
               </tbody>
             </table>
             {times.length > 0 && mins.length > 0 && (
-              <div className="border-t border-line p-3">
+              <div className="flex flex-wrap items-center gap-4 border-t border-line p-3">
                 <SubmitButton>Save position counts</SubmitButton>
+                <label className="flex items-center gap-2 text-sm">
+                  <input type="checkbox" name="sync" defaultChecked /> Also update upcoming Masses (adds seats, removes only empty ones)
+                </label>
               </div>
             )}
           </form>

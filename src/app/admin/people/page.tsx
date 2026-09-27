@@ -93,7 +93,12 @@ export default async function PeoplePage({ searchParams }: { searchParams: Promi
                       <Link href={`/admin/people/${p.id}`} className="font-medium hover:underline">
                         {p.lastName}, {p.firstName}
                       </Link>
-                      {p.role !== "volunteer" && <span className="ml-2 pill bg-rust/10 text-rust">{p.role}</span>}
+                      {p.role !== "volunteer" && <span className="ml-2 pill bg-rust/10 text-rust">{p.isSuperAdmin ? "super admin" : p.role === "coordinator" ? "lead" : p.role}</span>}
+                      {p.tags.map((t) => (
+                        <span key={t} className="ml-2 pill bg-navy/10 text-navy">
+                          {t}
+                        </span>
+                      ))}
                     </td>
                     <td className="text-xs text-muted">
                       {formatPhone(p.phone)}
@@ -135,9 +140,14 @@ export default async function PeoplePage({ searchParams }: { searchParams: Promi
           {admin && (
             <select name="role" className="input" defaultValue="volunteer">
               <option value="volunteer">Volunteer</option>
-              <option value="coordinator">Ministry coordinator</option>
-              <option value="admin">Admin (staff)</option>
+              <option value="coordinator">Ministry lead</option>
+              {user.isSuperAdmin && <option value="admin">Admin (staff)</option>}
             </select>
+          )}
+          {admin && (
+            <label className="flex items-center gap-2 text-sm">
+              <input type="checkbox" name="tags" value="Peer Ministry" /> Peer Ministry (teen volunteer)
+            </label>
           )}
           <fieldset>
             <legend className="label">Ministries</legend>

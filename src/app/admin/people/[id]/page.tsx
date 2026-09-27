@@ -7,7 +7,9 @@ import { users, ministries, auditLog } from "@/db/schema";
 import { PageTitle, StatusPill } from "@/components/shell";
 import { Flash } from "@/components/flash";
 import { SubmitButton } from "@/components/ui";
-import { resendInvite, setTempPassword, updatePerson } from "@/app/admin/actions";
+import { resendInvite, setTempPassword, updatePerson, signInAs } from "@/app/admin/actions";
+import { canManageUser } from "@/lib/auth";
+import { Alert } from "@/components/ui";
 import { formatPhone } from "@/lib/phone";
 import { getMyAssignments } from "@/lib/schedule";
 import { fmtDate, fmtTime, fmtInstant } from "@/lib/time";
@@ -28,12 +30,14 @@ export default async function PersonPage({ params, searchParams }: { params: Pro
     db.select().from(auditLog).where(eq(auditLog.actorId, id)).orderBy(desc(auditLog.createdAt)).limit(10),
   ]);
   const memberOf = new Map(p.memberships.map((m) => [m.ministryId, m.isCoordinator]));
+  const mayManage = canManageUser(actor, p);
+  const self = p.id === actor.id;
 
   return (
     <>
       <PageTitle
         title={`${p.firstName} ${p.lastName}`}
-        subtitle={`${p.role} · added ${fmtInstant(p.createdAt, "MMM d, yyyy")}`}
+        subtitle={`${p.isSuperAdmin ? "super admin" : p.role === "coordinator" ? "ministry lead" : p.role}${p.tags.length ? ` · ${p.tags.join(", ")}` : ""} · added ${fmtInstant(p.createdAt, "MMM d, yyyy")}`}
         actions={
           <Link href="/admin/people" className="btn-ghost">
             All people
@@ -41,6 +45,11 @@ export default async function PersonPage({ params, searchParams }: { params: Pro
         }
       />
       <Flash sp={sp} />
+      {admin && !mayManage && !self && (
+        <div className="mb-4">
+          <Alert kind="info">This is an admin account. Only a super admin can change its role, status, or password.</Alert>
+        </div>
+      )}
 
       <div className="grid gap-4 lg:grid-cols-3">
         <form action={updatePerson} className="card space-y-3 p-4 lg:col-span-2">
@@ -70,15 +79,17 @@ export default async function PersonPage({ params, searchParams }: { params: Pro
               <>
                 <div>
                   <label className="label">Role</label>
-                  <select name="role" className="input" defaultValue={p.role}>
+                  <select name="role" className="input" defaultValue={p.role} disabled={!mayManage && !self}>
                     <option value="volunteer">Volunteer</option>
-                    <option value="coordinator">Ministry coordinator</option>
-                    <option value="admin">Admin (staff)</option>
+                    <option value="coordinator">Ministry lead</option>
+                    <option value="admin" disabled={!actor.isSuperAdmin && p.role !== "admin"}>
+                      Admin (staff)
+                    </option>
                   </select>
                 </div>
                 <div>
                   <label className="label">Status</label>
-                  <select name="status" className="input" defaultValue={p.status}>
+                  <select name="status" className="input" defaultValue={p.status} disabled={!mayManage && !self}>
                     <option value="invited">Invited (not finished setup)</option>
                     <option value="active">Active</option>
                     <option value="inactive">Inactive (cannot sign in)</option>
@@ -86,6 +97,9 @@ export default async function PersonPage({ params, searchParams }: { params: Pro
                 </div>
                 <label className="flex items-center gap-2 self-end text-sm">
                   <input type="checkbox" name="mfaRequired" defaultChecked={p.mfaRequired} /> Code after password
+                </label>
+                <label className="flex items-center gap-2 self-end text-sm">
+                  <input type="checkbox" name="tags" value="Peer Ministry" defaultChecked={p.tags.includes("Peer Ministry")} /> Peer Ministry (teen volunteer)
                 </label>
               </>
             )}
@@ -106,8 +120,8 @@ export default async function PersonPage({ params, searchParams }: { params: Pro
                       {m.name}
                     </label>
                     {admin && (
-                      <label className="flex items-center gap-1 text-xs text-muted" title="Coordinators can manage this ministry's slots and people">
-                        <input type="checkbox" name="coordinatorIds" value={m.id} defaultChecked={memberOf.get(m.id) === true} /> coord.
+                      <label className="flex items-center gap-1 text-xs text-muted" title="Leads manage this ministry's seats and people and get its reports">
+                        <input type="checkbox" name="coordinatorIds" value={m.id} defaultChecked={memberOf.get(m.id) === true} /> lead
                       </label>
                     )}
                   </div>
@@ -134,7 +148,14 @@ export default async function PersonPage({ params, searchParams }: { params: Pro
                 {p.status === "invited" ? "Resend invite" : "Send setup link"}
               </SubmitButton>
             </form>
-            {admin && (
+            {admin && mayManage && !self && p.status === "active" && !actor.impersonatorId && (
+              <form action={signInAs} className="mt-3 border-t border-line pt-3">
+                <input type="hidden" name="id" value={p.id} />
+                <SubmitButton className="btn-ghost w-full">Sign in as {p.firstName}</SubmitButton>
+                <p className="mt-1 text-xs text-muted">You see exactly what they see. Logged.</p>
+              </form>
+            )}
+            {admin && (mayManage || self) && (
               <form action={setTempPassword} className="mt-3 space-y-2 border-t border-line pt-3">
                 <input type="hidden" name="id" value={p.id} />
                 <label className="label">Set a temporary password</label>
