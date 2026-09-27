@@ -1,0 +1,578 @@
+"use server";
+
+import { revalidatePath } from "next/cache";
+import { redirect } from "next/navigation";
+import { and, eq, gte, inArray, lte, ne } from "drizzle-orm";
+import { randomBytes } from "crypto";
+import { db } from "@/db";
+import {
+  users,
+  ministries,
+  ministryMembers,
+  massTimes,
+  positionTemplates,
+  liturgies,
+  positions,
+  assignments,
+  kiosks,
+  auditLog,
+} from "@/db/schema";
+import { requireAdmin, requireStaff, createInvite, sendInvite, sha256, canManageMinistry, hashPassword } from "@/lib/auth";
+import { normalizeEmail, normalizePhone } from "@/lib/phone";
+import { datesForWeekday, localToUtc, DAY_NAMES, fmtTime } from "@/lib/time";
+import { claimPosition, changeAssignment, ScheduleError } from "@/lib/schedule";
+
+function slugify(s: string) {
+  return s
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/(^-|-$)/g, "");
+}
+function str(fd: FormData, k: string) {
+  return String(fd.get(k) ?? "").trim();
+}
+function fail(path: string, msg: string): never {
+  redirect(`${path}${path.includes("?") ? "&" : "?"}error=${encodeURIComponent(msg)}`);
+}
+function ok(path: string, msg = "Saved."): never {
+  redirect(`${path}${path.includes("?") ? "&" : "?"}ok=${encodeURIComponent(msg)}`);
+}
+
+// ---------------- People ----------------
+
+export async function createPerson(formData: FormData) {
+  const actor = await requireStaff();
+  const firstName = str(formData, "firstName");
+  const lastName = str(formData, "lastName");
+  const phone = normalizePhone(str(formData, "phone"));
+  const email = normalizeEmail(str(formData, "email"));
+  const role = actor.role === "admin" ? (str(formData, "role") as "volunteer" | "coordinator" | "admin") || "volunteer" : "volunteer";
+  const ministryIds = formData.getAll("ministryIds").map(String).filter(Boolean);
+  const sendNow = formData.get("sendInvite") === "on";
+
+  if (!firstName || !lastName) fail("/admin/people", "First and last name are required.");
+  if (!phone && !email) fail("/admin/people", "A mobile number or email is required so they can sign in.");
+  if (actor.role !== "admin") {
+    // coordinators may only add people to their own ministries
+    if (ministryIds.some((m) => !actor.coordinatorOf.includes(m))) fail("/admin/people", "You can only add people to ministries you coordinate.");
+  }
+
+  if (phone) {
+    const c = await db.select({ id: users.id }).from(users).where(eq(users.phone, phone)).limit(1);
+    if (c[0]) fail("/admin/people", "That mobile number is already on another account.");
+  }
+  if (email) {
+    const c = await db.select({ id: users.id }).from(users).where(eq(users.email, email)).limit(1);
+    if (c[0]) fail("/admin/people", "That email is already on another account.");
+  }
+
+  const [u] = await db
+    .insert(users)
+    .values({ firstName, lastName, phone, email, role, status: "invited", mfaRequired: role !== "volunteer" })
+    .returning();
+  if (ministryIds.length) {
+    await db.insert(ministryMembers).values(ministryIds.map((ministryId) => ({ userId: u.id, ministryId })));
+  }
+  await db.insert(auditLog).values({ actorId: actor.id, action: "person.create", subjectType: "user", subjectId: u.id });
+
+  if (sendNow) {
+    const token = await createInvite(u.id);
+    await sendInvite(u, token, `${actor.firstName} ${actor.lastName}`);
+  }
+  revalidatePath("/admin/people");
+  ok(`/admin/people/${u.id}`, sendNow ? "Added and invited." : "Added.");
+}
+
+export async function updatePerson(formData: FormData) {
+  const actor = await requireStaff();
+  const id = str(formData, "id");
+  const path = `/admin/people/${id}`;
+  const target = await db.query.users.findFirst({ where: eq(users.id, id), with: { memberships: true } });
+  if (!target) fail("/admin/people", "Person not found.");
+
+  const firstName = str(formData, "firstName");
+  const lastName = str(formData, "lastName");
+  const phone = normalizePhone(str(formData, "phone"));
+  const email = normalizeEmail(str(formData, "email"));
+  const username = str(formData, "username").toLowerCase() || null;
+  const notes = str(formData, "notes") || null;
+  const status = str(formData, "status") as "invited" | "active" | "inactive";
+  const ministryIds = new Set(formData.getAll("ministryIds").map(String).filter(Boolean));
+  const coordinatorIds = new Set(formData.getAll("coordinatorIds").map(String).filter(Boolean));
+
+  if (!firstName || !lastName) fail(path, "Name is required.");
+  if (!phone && !email) fail(path, "Keep at least a mobile number or an email.");
+
+  if (phone) {
+    const c = await db.select({ id: users.id }).from(users).where(eq(users.phone, phone)).limit(1);
+    if (c[0] && c[0].id !== id) fail(path, "That mobile number is on another account.");
+  }
+  if (email) {
+    const c = await db.select({ id: users.id }).from(users).where(eq(users.email, email)).limit(1);
+    if (c[0] && c[0].id !== id) fail(path, "That email is on another account.");
+  }
+  if (username) {
+    const c = await db.select({ id: users.id }).from(users).where(eq(users.username, username)).limit(1);
+    if (c[0] && c[0].id !== id) fail(path, "That username is taken.");
+  }
+
+  const isAdmin = actor.role === "admin";
+  const updates: Partial<typeof users.$inferInsert> = {
+    firstName,
+    lastName,
+    phone,
+    email,
+    username,
+    notes,
+    phoneVerified: phone === target.phone ? target.phoneVerified : false,
+    emailVerified: email === target.email ? target.emailVerified : false,
+    updatedAt: new Date(),
+  };
+  if (isAdmin) {
+    const role = str(formData, "role") as "volunteer" | "coordinator" | "admin";
+    if (["volunteer", "coordinator", "admin"].includes(role)) {
+      if (target.id === actor.id && role !== "admin") fail(path, "You can't remove your own admin role.");
+      updates.role = role;
+      updates.mfaRequired = role !== "volunteer" ? true : formData.get("mfaRequired") === "on";
+    }
+    if (["invited", "active", "inactive"].includes(status)) updates.status = status;
+  }
+  await db.update(users).set(updates).where(eq(users.id, id));
+
+  // Ministries: admins manage all; coordinators only their own
+  const manageable = isAdmin ? null : new Set(actor.coordinatorOf);
+  const current = new Map(target.memberships.map((m) => [m.ministryId, m.isCoordinator]));
+  const allIds = new Set([...current.keys(), ...ministryIds]);
+  for (const mid of allIds) {
+    if (manageable && !manageable.has(mid)) continue;
+    const want = ministryIds.has(mid);
+    const wantCoord = isAdmin && coordinatorIds.has(mid);
+    const has = current.has(mid);
+    if (want && !has) await db.insert(ministryMembers).values({ userId: id, ministryId: mid, isCoordinator: wantCoord });
+    else if (!want && has) await db.delete(ministryMembers).where(and(eq(ministryMembers.userId, id), eq(ministryMembers.ministryId, mid)));
+    else if (want && has && isAdmin && current.get(mid) !== wantCoord)
+      await db.update(ministryMembers).set({ isCoordinator: wantCoord }).where(and(eq(ministryMembers.userId, id), eq(ministryMembers.ministryId, mid)));
+  }
+  await db.insert(auditLog).values({ actorId: actor.id, action: "person.update", subjectType: "user", subjectId: id });
+  revalidatePath("/admin/people");
+  ok(path);
+}
+
+export async function resendInvite(formData: FormData) {
+  const actor = await requireStaff();
+  const id = str(formData, "id");
+  const [u] = await db.select().from(users).where(eq(users.id, id));
+  if (!u) fail("/admin/people", "Person not found.");
+  const token = await createInvite(u.id);
+  const sent = await sendInvite(u, token, `${actor.firstName} ${actor.lastName}`);
+  ok(`/admin/people/${id}`, sent.length ? `Invite sent by ${sent.join(" and ")}.` : "Invite created but nothing could be sent. Check Twilio/Resend settings.");
+}
+
+export async function setTempPassword(formData: FormData) {
+  const actor = await requireAdmin();
+  const id = str(formData, "id");
+  const pw = str(formData, "password");
+  if (pw.length < 8) fail(`/admin/people/${id}`, "Password needs at least 8 characters.");
+  await db.update(users).set({ passwordHash: await hashPassword(pw), status: "active", updatedAt: new Date() }).where(eq(users.id, id));
+  await db.insert(auditLog).values({ actorId: actor.id, action: "person.set_password", subjectType: "user", subjectId: id });
+  ok(`/admin/people/${id}`, "Password set and account activated.");
+}
+
+/** CSV import: first,last,phone,email,ministries (semicolon-separated short names or slugs) */
+export async function importPeople(formData: FormData) {
+  const actor = await requireAdmin();
+  const text = str(formData, "csv");
+  const sendNow = formData.get("sendInvite") === "on";
+  if (!text) fail("/admin/people/import", "Paste some CSV first.");
+
+  const allMinistries = await db.select().from(ministries);
+  const byKey = new Map<string, string>();
+  for (const m of allMinistries) {
+    byKey.set(m.shortName.toLowerCase(), m.id);
+    byKey.set(m.slug.toLowerCase(), m.id);
+    byKey.set(m.name.toLowerCase(), m.id);
+  }
+
+  const lines = text.split(/\r?\n/).map((l) => l.trim()).filter(Boolean);
+  let added = 0,
+    skipped = 0;
+  const problems: string[] = [];
+  const header = lines[0]?.toLowerCase();
+  const start = header && /first/.test(header) ? 1 : 0;
+
+  for (let i = start; i < lines.length; i++) {
+    const cols = parseCsvLine(lines[i]);
+    const [first, last, phoneRaw, emailRaw, minRaw] = cols;
+    if (!first || !last) {
+      problems.push(`Line ${i + 1}: missing name`);
+      continue;
+    }
+    const phone = normalizePhone(phoneRaw);
+    const email = normalizeEmail(emailRaw);
+    if (!phone && !email) {
+      problems.push(`Line ${i + 1}: ${first} ${last} has no phone or email`);
+      continue;
+    }
+    const existing = await db
+      .select({ id: users.id })
+      .from(users)
+      .where(phone && email ? and(eq(users.phone, phone)) : phone ? eq(users.phone, phone) : eq(users.email, email!))
+      .limit(1);
+    let userId = existing[0]?.id;
+    if (!userId && email) {
+      const byEmail = await db.select({ id: users.id }).from(users).where(eq(users.email, email)).limit(1);
+      userId = byEmail[0]?.id;
+    }
+    if (!userId) {
+      const [u] = await db.insert(users).values({ firstName: first, lastName: last, phone, email, status: "invited" }).returning();
+      userId = u.id;
+      added++;
+      if (sendNow) {
+        const token = await createInvite(u.id);
+        await sendInvite(u, token, `${actor.firstName} ${actor.lastName}`);
+      }
+    } else skipped++;
+
+    const mins = (minRaw ?? "")
+      .split(/[;|]/)
+      .map((s) => s.trim().toLowerCase())
+      .filter(Boolean);
+    for (const key of mins) {
+      const mid = byKey.get(key);
+      if (!mid) {
+        problems.push(`Line ${i + 1}: unknown ministry "${key}"`);
+        continue;
+      }
+      await db.insert(ministryMembers).values({ userId, ministryId: mid }).onConflictDoNothing();
+    }
+  }
+  await db.insert(auditLog).values({ actorId: actor.id, action: "person.import", detail: `${added} added, ${skipped} existing` });
+  revalidatePath("/admin/people");
+  redirect(`/admin/people/import?ok=${encodeURIComponent(`${added} added, ${skipped} already existed.`)}${problems.length ? `&problems=${encodeURIComponent(problems.join("\n"))}` : ""}`);
+}
+
+function parseCsvLine(line: string): string[] {
+  const out: string[] = [];
+  let cur = "";
+  let q = false;
+  for (let i = 0; i < line.length; i++) {
+    const ch = line[i];
+    if (ch === '"') {
+      if (q && line[i + 1] === '"') {
+        cur += '"';
+        i++;
+      } else q = !q;
+    } else if (ch === "," && !q) {
+      out.push(cur.trim());
+      cur = "";
+    } else cur += ch;
+  }
+  out.push(cur.trim());
+  return out;
+}
+
+// ---------------- Ministries ----------------
+
+export async function saveMinistry(formData: FormData) {
+  const actor = await requireAdmin();
+  const id = str(formData, "id");
+  const name = str(formData, "name");
+  const shortName = str(formData, "shortName");
+  if (!name || !shortName) fail("/admin/ministries", "Name and short name are required.");
+  const values = {
+    name,
+    shortName,
+    slug: slugify(str(formData, "slug") || name),
+    description: str(formData, "description") || null,
+    color: str(formData, "color") || "#1F346D",
+    sortOrder: Number(str(formData, "sortOrder") || 100),
+    active: formData.get("active") !== "off",
+    checkInEnabled: formData.get("checkInEnabled") === "on",
+  };
+  if (id) await db.update(ministries).set(values).where(eq(ministries.id, id));
+  else await db.insert(ministries).values(values);
+  await db.insert(auditLog).values({ actorId: actor.id, action: id ? "ministry.update" : "ministry.create", detail: name });
+  revalidatePath("/admin/ministries");
+  ok("/admin/ministries");
+}
+
+export async function toggleMinistry(formData: FormData) {
+  await requireAdmin();
+  const id = str(formData, "id");
+  const [m] = await db.select().from(ministries).where(eq(ministries.id, id));
+  if (m) await db.update(ministries).set({ active: !m.active }).where(eq(ministries.id, id));
+  revalidatePath("/admin/ministries");
+  ok("/admin/ministries");
+}
+
+// ---------------- Mass times and templates ----------------
+
+export async function saveMassTime(formData: FormData) {
+  await requireAdmin();
+  const id = str(formData, "id");
+  const dayOfWeek = Number(str(formData, "dayOfWeek"));
+  const time = str(formData, "time");
+  if (!/^\d{2}:\d{2}$/.test(time) || dayOfWeek < 0 || dayOfWeek > 6) fail("/admin/mass-times", "Pick a day and a time.");
+  const values = {
+    label: str(formData, "label") || `${DAY_NAMES[dayOfWeek]} ${fmtTime(time)}`,
+    dayOfWeek,
+    time,
+    location: str(formData, "location") || "Church",
+    sortOrder: Number(str(formData, "sortOrder") || (dayOfWeek === 6 ? 0 : 10) * 100 + Number(time.replace(":", "")) / 10),
+    active: formData.get("active") !== "off",
+  };
+  if (id) await db.update(massTimes).set(values).where(eq(massTimes.id, id));
+  else await db.insert(massTimes).values(values);
+  revalidatePath("/admin/mass-times");
+  ok("/admin/mass-times");
+}
+
+export async function toggleMassTime(formData: FormData) {
+  await requireAdmin();
+  const id = str(formData, "id");
+  const [m] = await db.select().from(massTimes).where(eq(massTimes.id, id));
+  if (m) await db.update(massTimes).set({ active: !m.active }).where(eq(massTimes.id, id));
+  revalidatePath("/admin/mass-times");
+  ok("/admin/mass-times");
+}
+
+/** Save the whole template grid: fields named count:<massTimeId>:<ministryId> */
+export async function saveTemplates(formData: FormData) {
+  await requireAdmin();
+  const entries: { massTimeId: string; ministryId: string; count: number }[] = [];
+  for (const [k, v] of formData.entries()) {
+    if (!k.startsWith("count:")) continue;
+    const [, massTimeId, ministryId] = k.split(":");
+    const count = Math.max(0, Math.min(30, Number(v) || 0));
+    entries.push({ massTimeId, ministryId, count });
+  }
+  for (const e of entries) {
+    if (e.count === 0) {
+      await db.delete(positionTemplates).where(and(eq(positionTemplates.massTimeId, e.massTimeId), eq(positionTemplates.ministryId, e.ministryId)));
+    } else {
+      await db
+        .insert(positionTemplates)
+        .values(e)
+        .onConflictDoUpdate({ target: [positionTemplates.massTimeId, positionTemplates.ministryId], set: { count: e.count } });
+    }
+  }
+  revalidatePath("/admin/mass-times");
+  ok("/admin/mass-times", "Position counts saved.");
+}
+
+// ---------------- Schedule ----------------
+
+/** Create draft liturgies for every active Mass time between two dates, skipping dates that already exist. */
+export async function generateLiturgies(formData: FormData) {
+  const actor = await requireAdmin();
+  const from = str(formData, "from");
+  const to = str(formData, "to");
+  const publish = formData.get("publish") === "on";
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(from) || !/^\d{4}-\d{2}-\d{2}$/.test(to) || to < from) fail("/admin/schedule", "Pick a valid date range.");
+  const days = (new Date(to).getTime() - new Date(from).getTime()) / 86400_000;
+  if (days > 200) fail("/admin/schedule", "Generate at most about six months at a time.");
+
+  const times = await db.query.massTimes.findMany({ where: eq(massTimes.active, true), with: { templates: { with: { ministry: true } } } });
+  const existing = await db
+    .select({ date: liturgies.date, massTimeId: liturgies.massTimeId })
+    .from(liturgies)
+    .where(and(gte(liturgies.date, from), lte(liturgies.date, to)));
+  const have = new Set(existing.map((e) => `${e.date}|${e.massTimeId}`));
+
+  let created = 0;
+  for (const mt of times) {
+    for (const date of datesForWeekday(from, to, mt.dayOfWeek)) {
+      if (have.has(`${date}|${mt.id}`)) continue;
+      const [l] = await db
+        .insert(liturgies)
+        .values({
+          massTimeId: mt.id,
+          date,
+          time: mt.time,
+          startsAt: localToUtc(date, mt.time),
+          label: mt.label,
+          location: mt.location,
+          status: publish ? "published" : "draft",
+        })
+        .returning();
+      const rows = mt.templates
+        .filter((t) => t.ministry.active)
+        .flatMap((t) => Array.from({ length: t.count }, (_, i) => ({ liturgyId: l.id, ministryId: t.ministryId, sortOrder: i, label: t.count > 1 ? `#${i + 1}` : null })));
+      if (rows.length) await db.insert(positions).values(rows);
+      created++;
+    }
+  }
+  await db.insert(auditLog).values({ actorId: actor.id, action: "schedule.generate", detail: `${from}..${to}: ${created} Masses${publish ? " (published)" : ""}` });
+  revalidatePath("/admin/schedule");
+  ok(`/admin/schedule?from=${from}&to=${to}`, `${created} Masses created${publish ? " and published" : " as drafts"}.`);
+}
+
+export async function setLiturgyStatus(formData: FormData) {
+  const actor = await requireAdmin();
+  const ids = formData.getAll("ids").map(String).filter(Boolean);
+  const status = str(formData, "status") as "draft" | "published" | "cancelled";
+  const ret = str(formData, "return") || "/admin/schedule";
+  if (!ids.length) fail(ret, "Select at least one Mass.");
+  if (!["draft", "published", "cancelled"].includes(status)) fail(ret, "Bad status.");
+  await db.update(liturgies).set({ status }).where(inArray(liturgies.id, ids));
+  await db.insert(auditLog).values({ actorId: actor.id, action: `schedule.${status}`, detail: `${ids.length} Masses` });
+  revalidatePath("/admin/schedule");
+  revalidatePath("/app");
+  ok(ret, `${ids.length} Mass${ids.length === 1 ? "" : "es"} marked ${status}.`);
+}
+
+export async function createOneLiturgy(formData: FormData) {
+  const actor = await requireAdmin();
+  const date = str(formData, "date");
+  const time = str(formData, "time");
+  const label = str(formData, "label");
+  const title = str(formData, "title") || null;
+  const location = str(formData, "location") || "Church";
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(date) || !/^\d{2}:\d{2}$/.test(time)) fail("/admin/schedule", "Date and time are required.");
+  const [l] = await db
+    .insert(liturgies)
+    .values({ date, time, label: label || fmtTime(time), title, location, startsAt: localToUtc(date, time), status: "draft" })
+    .returning();
+  await db.insert(auditLog).values({ actorId: actor.id, action: "liturgy.create", subjectId: l.id });
+  redirect(`/admin/schedule/${l.id}`);
+}
+
+export async function updateLiturgy(formData: FormData) {
+  await requireAdmin();
+  const id = str(formData, "id");
+  const date = str(formData, "date");
+  const time = str(formData, "time");
+  const path = `/admin/schedule/${id}`;
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(date) || !/^\d{2}:\d{2}$/.test(time)) fail(path, "Date and time are required.");
+  await db
+    .update(liturgies)
+    .set({
+      date,
+      time,
+      startsAt: localToUtc(date, time),
+      label: str(formData, "label") || fmtTime(time),
+      title: str(formData, "title") || null,
+      location: str(formData, "location") || "Church",
+      notes: str(formData, "notes") || null,
+      status: (str(formData, "status") as "draft" | "published" | "cancelled") || "draft",
+    })
+    .where(eq(liturgies.id, id));
+  revalidatePath("/admin/schedule");
+  ok(path);
+}
+
+export async function deleteLiturgy(formData: FormData) {
+  const actor = await requireAdmin();
+  const id = str(formData, "id");
+  await db.delete(liturgies).where(eq(liturgies.id, id));
+  await db.insert(auditLog).values({ actorId: actor.id, action: "liturgy.delete", subjectId: id });
+  revalidatePath("/admin/schedule");
+  ok("/admin/schedule", "Mass deleted.");
+}
+
+export async function addPosition(formData: FormData) {
+  const actor = await requireStaff();
+  const liturgyId = str(formData, "liturgyId");
+  const ministryId = str(formData, "ministryId");
+  const count = Math.max(1, Math.min(20, Number(str(formData, "count") || 1)));
+  const path = `/admin/schedule/${liturgyId}`;
+  if (!canManageMinistry(actor, ministryId)) fail(path, "You can't add positions for that ministry.");
+  const existing = await db.select({ id: positions.id }).from(positions).where(and(eq(positions.liturgyId, liturgyId), eq(positions.ministryId, ministryId)));
+  const base = existing.length;
+  await db.insert(positions).values(
+    Array.from({ length: count }, (_, i) => ({ liturgyId, ministryId, sortOrder: base + i, label: base + count > 1 ? `#${base + i + 1}` : null })),
+  );
+  revalidatePath(path);
+  ok(path);
+}
+
+export async function removePosition(formData: FormData) {
+  const actor = await requireStaff();
+  const id = str(formData, "positionId");
+  const [p] = await db.select().from(positions).where(eq(positions.id, id));
+  if (!p) fail("/admin/schedule", "Position not found.");
+  const path = `/admin/schedule/${p.liturgyId}`;
+  if (!canManageMinistry(actor, p.ministryId)) fail(path, "Not your ministry.");
+  await db.delete(positions).where(eq(positions.id, id));
+  revalidatePath(path);
+  ok(path, "Position removed.");
+}
+
+export async function assignPerson(formData: FormData) {
+  const actor = await requireStaff();
+  const positionId = str(formData, "positionId");
+  const userId = str(formData, "userId");
+  const [p] = await db.select().from(positions).where(eq(positions.id, positionId));
+  if (!p) fail("/admin/schedule", "Position not found.");
+  const path = `/admin/schedule/${p.liturgyId}`;
+  if (!canManageMinistry(actor, p.ministryId)) fail(path, "Not your ministry.");
+  const target = await db.query.users.findFirst({ where: eq(users.id, userId), with: { memberships: true } });
+  if (!target) fail(path, "Person not found.");
+  // Clear any live assignment first (admin override)
+  await db.update(assignments).set({ status: "declined", updatedAt: new Date() }).where(and(eq(assignments.positionId, positionId), ne(assignments.status, "declined")));
+  try {
+    await claimPosition(
+      { ...target, ministryIds: target.memberships.map((m) => m.ministryId), coordinatorOf: [] },
+      positionId,
+      actor.id,
+    );
+  } catch (e) {
+    if (e instanceof ScheduleError) fail(path, e.message);
+    throw e;
+  }
+  revalidatePath(path);
+  ok(path, `${target.firstName} ${target.lastName} assigned.`);
+}
+
+export async function staffAssignmentAction(formData: FormData) {
+  const actor = await requireStaff();
+  const assignmentId = str(formData, "assignmentId");
+  const action = str(formData, "action") as "drop" | "request_sub" | "confirm" | "undo_sub" | "checkin" | "uncheckin";
+  const ret = str(formData, "return") || "/admin/schedule";
+  if (action === "checkin" || action === "uncheckin") {
+    const a = await db.query.assignments.findFirst({ where: eq(assignments.id, assignmentId), with: { position: true } });
+    if (!a) fail(ret, "Assignment not found.");
+    if (!canManageMinistry(actor, a.position.ministryId)) fail(ret, "Not your ministry.");
+    await db
+      .update(assignments)
+      .set(action === "checkin" ? { checkedInAt: new Date(), checkedInVia: `admin:${actor.id}` } : { checkedInAt: null, checkedInVia: null })
+      .where(eq(assignments.id, assignmentId));
+  } else {
+    try {
+      await changeAssignment(actor, assignmentId, action);
+    } catch (e) {
+      if (e instanceof ScheduleError) fail(ret, e.message);
+      throw e;
+    }
+  }
+  revalidatePath(ret);
+  ok(ret);
+}
+
+// ---------------- Kiosks ----------------
+
+export async function createKiosk(formData: FormData) {
+  const actor = await requireAdmin();
+  const name = str(formData, "name") || "Sacristy touchscreen";
+  const key = randomBytes(24).toString("base64url");
+  await db.insert(kiosks).values({ name, keyHash: sha256(key) });
+  await db.insert(auditLog).values({ actorId: actor.id, action: "kiosk.create", detail: name });
+  revalidatePath("/admin/kiosks");
+  redirect(`/admin/kiosks?newKey=${encodeURIComponent(key)}&name=${encodeURIComponent(name)}`);
+}
+
+export async function toggleKiosk(formData: FormData) {
+  await requireAdmin();
+  const id = str(formData, "id");
+  const [k] = await db.select().from(kiosks).where(eq(kiosks.id, id));
+  if (k) await db.update(kiosks).set({ active: !k.active }).where(eq(kiosks.id, id));
+  revalidatePath("/admin/kiosks");
+  ok("/admin/kiosks");
+}
+
+export async function deleteKiosk(formData: FormData) {
+  await requireAdmin();
+  await db.delete(kiosks).where(eq(kiosks.id, str(formData, "id")));
+  revalidatePath("/admin/kiosks");
+  ok("/admin/kiosks", "Kiosk removed.");
+}

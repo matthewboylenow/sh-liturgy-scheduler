@@ -1,0 +1,260 @@
+import { cookies, headers } from "next/headers";
+import { cache } from "react";
+import { createHash, randomBytes, randomInt } from "crypto";
+import bcrypt from "bcryptjs";
+import { SignJWT, jwtVerify } from "jose";
+import { and, eq, gt, isNull } from "drizzle-orm";
+import { redirect } from "next/navigation";
+import { db } from "@/db";
+import { users, sessions, otpCodes, ministryMembers, invites, type User } from "@/db/schema";
+import { env } from "./env";
+import { sendSms, sendEmail, emailShell } from "./notify";
+
+export const SESSION_COOKIE = "sh_session";
+export const MFA_COOKIE = "sh_mfa";
+const SESSION_DAYS = 30;
+const OTP_MINUTES = 10;
+const OTP_MAX_ATTEMPTS = 5;
+
+export function sha256(v: string): string {
+  return createHash("sha256").update(v).digest("hex");
+}
+
+function secretKey() {
+  return new TextEncoder().encode(env.sessionSecret());
+}
+
+// ---------- Passwords ----------
+
+export async function hashPassword(pw: string) {
+  return bcrypt.hash(pw, 12);
+}
+export async function verifyPassword(pw: string, hash: string | null) {
+  if (!hash) return false;
+  return bcrypt.compare(pw, hash);
+}
+
+// ---------- Sessions ----------
+
+export async function createSession(userId: string) {
+  const token = randomBytes(32).toString("base64url");
+  const h = await headers();
+  const expiresAt = new Date(Date.now() + SESSION_DAYS * 86400_000);
+  await db.insert(sessions).values({
+    userId,
+    tokenHash: sha256(token),
+    expiresAt,
+    userAgent: h.get("user-agent")?.slice(0, 250) ?? null,
+  });
+  const c = await cookies();
+  c.set(SESSION_COOKIE, token, {
+    httpOnly: true,
+    sameSite: "lax",
+    secure: process.env.NODE_ENV === "production",
+    path: "/",
+    expires: expiresAt,
+  });
+  c.delete(MFA_COOKIE);
+}
+
+export async function destroySession() {
+  const c = await cookies();
+  const token = c.get(SESSION_COOKIE)?.value;
+  if (token) {
+    await db.delete(sessions).where(eq(sessions.tokenHash, sha256(token)));
+  }
+  c.delete(SESSION_COOKIE);
+}
+
+export type SessionUser = User & { ministryIds: string[]; coordinatorOf: string[] };
+
+/** The logged-in user, or null. Cached per request. */
+export const getCurrentUser = cache(async (): Promise<SessionUser | null> => {
+  const c = await cookies();
+  const token = c.get(SESSION_COOKIE)?.value;
+  if (!token) return null;
+  const row = await db
+    .select({ user: users, expiresAt: sessions.expiresAt })
+    .from(sessions)
+    .innerJoin(users, eq(users.id, sessions.userId))
+    .where(and(eq(sessions.tokenHash, sha256(token)), gt(sessions.expiresAt, new Date())))
+    .limit(1);
+  const found = row[0];
+  if (!found || found.user.status !== "active") return null;
+  const memberships = await db
+    .select({ ministryId: ministryMembers.ministryId, isCoordinator: ministryMembers.isCoordinator })
+    .from(ministryMembers)
+    .where(eq(ministryMembers.userId, found.user.id));
+  return {
+    ...found.user,
+    ministryIds: memberships.map((m) => m.ministryId),
+    coordinatorOf: memberships.filter((m) => m.isCoordinator).map((m) => m.ministryId),
+  };
+});
+
+export async function requireUser(): Promise<SessionUser> {
+  const u = await getCurrentUser();
+  if (!u) redirect("/login");
+  return u;
+}
+
+export function isAdmin(u: SessionUser | null) {
+  return u?.role === "admin";
+}
+export function isStaff(u: SessionUser | null) {
+  return u?.role === "admin" || u?.role === "coordinator";
+}
+/** Can this user manage the given ministry (admin, or coordinator of it)? */
+export function canManageMinistry(u: SessionUser, ministryId: string) {
+  return u.role === "admin" || u.coordinatorOf.includes(ministryId);
+}
+
+export async function requireStaff(): Promise<SessionUser> {
+  const u = await getCurrentUser();
+  if (!u) redirect("/admin/login");
+  if (!isStaff(u)) redirect("/app?denied=1");
+  return u;
+}
+
+export async function requireAdmin(): Promise<SessionUser> {
+  const u = await getCurrentUser();
+  if (!u) redirect("/admin/login");
+  if (!isAdmin(u)) redirect("/admin?denied=1");
+  return u;
+}
+
+// ---------- MFA pending ticket (password accepted, code still needed) ----------
+
+export async function setMfaPending(userId: string, next: string) {
+  const jwt = await new SignJWT({ uid: userId, next })
+    .setProtectedHeader({ alg: "HS256" })
+    .setExpirationTime("15m")
+    .sign(secretKey());
+  const c = await cookies();
+  c.set(MFA_COOKIE, jwt, { httpOnly: true, sameSite: "lax", secure: process.env.NODE_ENV === "production", path: "/", maxAge: 900 });
+}
+
+export async function readMfaPending(): Promise<{ uid: string; next: string } | null> {
+  const c = await cookies();
+  const v = c.get(MFA_COOKIE)?.value;
+  if (!v) return null;
+  try {
+    const { payload } = await jwtVerify(v, secretKey());
+    return { uid: String(payload.uid), next: String(payload.next ?? "/app") };
+  } catch {
+    return null;
+  }
+}
+
+// ---------- One-time codes ----------
+
+export type OtpChannel = "sms" | "email";
+export type OtpPurpose = "login" | "mfa" | "verify_phone" | "verify_email";
+
+/** Create and deliver a 6-digit code. Returns false if nothing could be sent. */
+export async function issueOtp(opts: {
+  userId: string | null;
+  destination: string;
+  channel: OtpChannel;
+  purpose: OtpPurpose;
+}): Promise<{ ok: boolean; error?: string }> {
+  // Throttle: no more than 5 codes per destination per 15 minutes
+  const recent = await db
+    .select({ id: otpCodes.id })
+    .from(otpCodes)
+    .where(and(eq(otpCodes.destination, opts.destination), gt(otpCodes.createdAt, new Date(Date.now() - 15 * 60_000))));
+  if (recent.length >= 5) return { ok: false, error: "Too many codes requested. Wait a few minutes and try again." };
+
+  const code = String(randomInt(0, 1_000_000)).padStart(6, "0");
+  await db.insert(otpCodes).values({
+    userId: opts.userId,
+    destination: opts.destination,
+    channel: opts.channel,
+    purpose: opts.purpose,
+    codeHash: sha256(code),
+    expiresAt: new Date(Date.now() + OTP_MINUTES * 60_000),
+  });
+
+  const parish = env.parishName();
+  if (opts.channel === "sms") {
+    return sendSms(opts.destination, `${parish} Liturgy: your code is ${code}. It expires in ${OTP_MINUTES} minutes.`, {
+      userId: opts.userId,
+      kind: "otp",
+    });
+  }
+  return sendEmail(
+    opts.destination,
+    `Your ${parish} Liturgy code: ${code}`,
+    emailShell("Your sign-in code", `<p style="font-size:28px;letter-spacing:6px;font-weight:bold">${code}</p><p>This code expires in ${OTP_MINUTES} minutes. If you did not request it, you can ignore this email.</p>`),
+    { userId: opts.userId, kind: "otp" },
+    `Your code is ${code}. It expires in ${OTP_MINUTES} minutes.`,
+  );
+}
+
+export async function verifyOtp(destination: string, purpose: OtpPurpose, code: string): Promise<{ ok: boolean; userId: string | null; error?: string }> {
+  const rows = await db
+    .select()
+    .from(otpCodes)
+    .where(and(eq(otpCodes.destination, destination), eq(otpCodes.purpose, purpose), isNull(otpCodes.consumedAt), gt(otpCodes.expiresAt, new Date())))
+    .orderBy(otpCodes.createdAt);
+  const latest = rows.at(-1);
+  if (!latest) return { ok: false, userId: null, error: "That code has expired. Request a new one." };
+  if (latest.attempts >= OTP_MAX_ATTEMPTS) return { ok: false, userId: null, error: "Too many attempts. Request a new code." };
+  if (latest.codeHash !== sha256(code.replace(/\D/g, ""))) {
+    await db.update(otpCodes).set({ attempts: latest.attempts + 1 }).where(eq(otpCodes.id, latest.id));
+    return { ok: false, userId: null, error: "That code is not right. Check it and try again." };
+  }
+  await db.update(otpCodes).set({ consumedAt: new Date() }).where(eq(otpCodes.id, latest.id));
+  return { ok: true, userId: latest.userId };
+}
+
+// ---------- Invites ----------
+
+export async function createInvite(userId: string): Promise<string> {
+  const token = randomBytes(24).toString("base64url");
+  await db.insert(invites).values({
+    userId,
+    tokenHash: sha256(token),
+    expiresAt: new Date(Date.now() + 14 * 86400_000),
+  });
+  return token;
+}
+
+export async function findInvite(token: string) {
+  const rows = await db
+    .select({ invite: invites, user: users })
+    .from(invites)
+    .innerJoin(users, eq(users.id, invites.userId))
+    .where(and(eq(invites.tokenHash, sha256(token)), isNull(invites.acceptedAt), gt(invites.expiresAt, new Date())))
+    .limit(1);
+  return rows[0] ?? null;
+}
+
+export async function sendInvite(user: User, token: string, invitedBy?: string) {
+  const url = `${env.appUrl()}/invite/${token}`;
+  const parish = env.parishName();
+  const results: string[] = [];
+  if (user.phone) {
+    const r = await sendSms(user.phone, `${parish} Liturgy: ${invitedBy ?? "the parish"} set up your ministry sign-up account. Finish setup here: ${url}`, {
+      userId: user.id,
+      kind: "invite",
+    });
+    if (r.ok) results.push("text");
+  }
+  if (user.email) {
+    const r = await sendEmail(
+      user.email,
+      `Set up your ${parish} ministry sign-up account`,
+      emailShell(
+        `Welcome, ${user.firstName}`,
+        `<p>${invitedBy ?? "The parish"} set up an account for you in the new liturgical ministry sign-up portal. This replaces SignUpGenius.</p>
+         <p><a href="${url}" style="display:inline-block;background:#CD5334;color:#fff;padding:12px 18px;border-radius:6px;text-decoration:none">Finish setting up</a></p>
+         <p style="color:#666;font-size:13px">Or paste this link into your browser:<br>${url}</p>`,
+      ),
+      { userId: user.id, kind: "invite" },
+      `Finish setting up your account: ${url}`,
+    );
+    if (r.ok) results.push("email");
+  }
+  return results;
+}
