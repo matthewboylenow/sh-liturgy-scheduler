@@ -8,12 +8,13 @@
     "start": "next start",
     "lint": "eslint",
     "db:generate": "drizzle-kit generate",
-    "db:migrate": "drizzle-kit migrate",
+    "db:migrate": "tsx scripts/migrate.ts",
     "db:push": "drizzle-kit push",
     "db:studio": "drizzle-kit studio",
     "seed": "tsx scripts/seed.ts",
     "cron:reminders": "tsx scripts/run-cron.ts reminders",
-    "cron:open-slots": "tsx scripts/run-cron.ts open-slots"
+    "cron:open-slots": "tsx scripts/run-cron.ts open-slots",
+    "db:migrate:kit": "drizzle-kit migrate"
   },
   "dependencies": {
     "@neondatabase/serverless": "^1.1.0",
