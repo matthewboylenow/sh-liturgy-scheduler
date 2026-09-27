@@ -44,6 +44,7 @@ export default async function MinistriesPage({ searchParams }: { searchParams: P
                       {!m.active && <span className="pill bg-gray-100">inactive</span>}
                     </div>
                     {m.description && <div className="text-xs text-muted">{m.description}</div>}
+                    {m.roles.length > 0 && <div className="text-xs text-muted">Roles: {m.roles.join(", ")}</div>}
                   </td>
                   <td>{countMap.get(m.id) ?? 0}</td>
                   <td className="text-xs">{m.checkInEnabled ? "check-in" : "hidden"}</td>
@@ -91,6 +92,11 @@ export default async function MinistriesPage({ searchParams }: { searchParams: P
           <div>
             <label className="label">Description</label>
             <input name="description" className="input" defaultValue={editing?.description ?? ""} />
+          </div>
+          <div>
+            <label className="label">Roles (optional)</label>
+            <input name="roles" className="input" defaultValue={editing?.roles.join(", ") ?? ""} aria-describedby="roles-help" />
+            <p id="roles-help" className="mt-1 text-xs text-muted">Comma separated. With roles set, seats are counted per role on Mass times and labeled with it, for example Vocals 1, Guitar.</p>
           </div>
           <div className="grid grid-cols-2 gap-2">
             <div>

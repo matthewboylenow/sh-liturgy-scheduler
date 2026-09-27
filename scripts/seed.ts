@@ -18,7 +18,7 @@ const MINISTRIES = [
   { name: "Extraordinary Ministers of Holy Communion", shortName: "EM", slug: "em", color: "#CD5334", sortOrder: 40 },
   { name: "Altar Servers", shortName: "Server", slug: "server", color: "#B45309", sortOrder: 50 },
   { name: "Hospitality Ministry", shortName: "Hospitality", slug: "hospitality", color: "#4D7C0F", sortOrder: 60 },
-  { name: "Music Ministry", shortName: "Music", slug: "music", color: "#BE185D", sortOrder: 70, description: "Cantors and instrumentalists" },
+  { name: "Music Ministry", shortName: "Music", slug: "music", color: "#BE185D", sortOrder: 70, description: "Cantors and instrumentalists", roles: ["Vocals", "Guitar", "Bass", "Drums", "Keys", "Other"] },
   { name: "Media Ministry", shortName: "Media", slug: "media", color: "#0369A1", sortOrder: 80, description: "Livestream, slides, and sound" },
 ];
 
@@ -32,7 +32,9 @@ const MASS_TIMES = [
 ];
 
 // Default positions per Mass, by ministry slug
-const TEMPLATE: Record<string, number> = { presider: 1, sacristan: 1, lector: 2, em: 4, server: 3, hospitality: 4, music: 2, media: 1 };
+const TEMPLATE: Record<string, number> = { presider: 1, sacristan: 1, lector: 2, em: 4, server: 3, hospitality: 4, media: 1 };
+// Ministries with roles get one row per role.
+const ROLE_TEMPLATE: Record<string, Record<string, number>> = { music: { Vocals: 2, Guitar: 1, Keys: 1 } };
 
 // Clergy who appear on the presider schedule. Inactive: assignable by staff, never sign in.
 const CLERGY = [{ firstName: "Fr. Tom", lastName: "Nydegger", initials: "TPN", notes: "Pastor" }];
@@ -54,6 +56,11 @@ async function main() {
       const ministryId = bySlug.get(slug);
       if (!ministryId) continue;
       await db.insert(positionTemplates).values({ massTimeId: id, ministryId, count }).onConflictDoNothing();
+    }
+    for (const [slug, roles] of Object.entries(ROLE_TEMPLATE)) {
+      const ministryId = bySlug.get(slug);
+      if (!ministryId) continue;
+      for (const [role, count] of Object.entries(roles)) await db.insert(positionTemplates).values({ massTimeId: id, ministryId, role, count }).onConflictDoNothing();
     }
   }
 

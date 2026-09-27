@@ -290,6 +290,7 @@ export async function saveMinistry(formData: FormData) {
     sortOrder: Number(str(formData, "sortOrder") || 100),
     active: formData.get("active") !== "off",
     checkInEnabled: formData.get("checkInEnabled") === "on",
+    roles: [...new Set(str(formData, "roles").split(/[,;\n]/).map((r) => r.trim()).filter(Boolean))],
   };
   if (id) await db.update(ministries).set(values).where(eq(ministries.id, id));
   else await db.insert(ministries).values(values);
@@ -338,24 +339,25 @@ export async function toggleMassTime(formData: FormData) {
   ok("/admin/mass-times");
 }
 
-/** Save the whole template grid: fields named count:<massTimeId>:<ministryId> */
+/** Save the whole template grid: fields named count:<massTimeId>:<ministryId>:<role, URL-encoded, may be empty> */
 export async function saveTemplates(formData: FormData) {
   await requireAdmin();
-  const entries: { massTimeId: string; ministryId: string; count: number }[] = [];
+  const entries: { massTimeId: string; ministryId: string; role: string; count: number }[] = [];
   for (const [k, v] of formData.entries()) {
     if (!k.startsWith("count:")) continue;
-    const [, massTimeId, ministryId] = k.split(":");
+    const [, massTimeId, ministryId, roleRaw = ""] = k.split(":");
     const count = Math.max(0, Math.min(30, Number(v) || 0));
-    entries.push({ massTimeId, ministryId, count });
+    entries.push({ massTimeId, ministryId, role: decodeURIComponent(roleRaw), count });
   }
   for (const e of entries) {
+    const where = and(eq(positionTemplates.massTimeId, e.massTimeId), eq(positionTemplates.ministryId, e.ministryId), eq(positionTemplates.role, e.role));
     if (e.count === 0) {
-      await db.delete(positionTemplates).where(and(eq(positionTemplates.massTimeId, e.massTimeId), eq(positionTemplates.ministryId, e.ministryId)));
+      await db.delete(positionTemplates).where(where);
     } else {
       await db
         .insert(positionTemplates)
         .values(e)
-        .onConflictDoUpdate({ target: [positionTemplates.massTimeId, positionTemplates.ministryId], set: { count: e.count } });
+        .onConflictDoUpdate({ target: [positionTemplates.massTimeId, positionTemplates.ministryId, positionTemplates.role], set: { count: e.count } });
     }
   }
   revalidatePath("/admin/mass-times");

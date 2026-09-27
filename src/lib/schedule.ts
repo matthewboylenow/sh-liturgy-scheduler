@@ -101,7 +101,7 @@ export function coverage(l: LiturgyFull) {
 
 /** Create one dated Mass from a Mass time, with one position row per seat in its template. */
 export async function createLiturgyFromMassTime(
-  mt: MassTime & { templates: { ministryId: string; count: number; ministry: { active: boolean } }[] },
+  mt: MassTime & { templates: { ministryId: string; role: string; count: number; ministry: { active: boolean } }[] },
   date: string,
   opts: { status?: Liturgy["status"]; title?: string | null } = {},
 ) {
@@ -118,11 +118,23 @@ export async function createLiturgyFromMassTime(
       status: opts.status ?? "draft",
     })
     .returning();
-  const rows = mt.templates
-    .filter((t) => t.ministry.active)
-    .flatMap((t) => Array.from({ length: t.count }, (_, i) => ({ liturgyId: l.id, ministryId: t.ministryId, sortOrder: i, label: t.count > 1 ? `#${i + 1}` : null })));
-  if (rows.length) await db.insert(positions).values(rows);
+  if (rows(mt).length) await db.insert(positions).values(rows(mt).map((r) => ({ ...r, liturgyId: l.id })));
   return l;
+}
+
+/** The seat rows a Mass time's template produces: "#1", "#2" for plain ministries, "Vocals 1", "Guitar" for roles. */
+export function rows(mt: { templates: { ministryId: string; role: string; count: number; ministry: { active: boolean } }[] }) {
+  const out: { ministryId: string; sortOrder: number; label: string | null }[] = [];
+  const perMinistry = new Map<string, number>();
+  for (const t of mt.templates.filter((t) => t.ministry.active)) {
+    for (let i = 0; i < t.count; i++) {
+      const n = perMinistry.get(t.ministryId) ?? 0;
+      perMinistry.set(t.ministryId, n + 1);
+      const label = t.role ? (t.count > 1 ? `${t.role} ${i + 1}` : t.role) : t.count > 1 ? `#${i + 1}` : null;
+      out.push({ ministryId: t.ministryId, sortOrder: n, label });
+    }
+  }
+  return out;
 }
 
 export class ScheduleError extends Error {}

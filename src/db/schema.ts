@@ -124,6 +124,8 @@ export const ministries = pgTable(
     active: boolean("active").notNull().default(true),
     // If false, members of this ministry don't appear on the kiosk (e.g. Presider)
     checkInEnabled: boolean("check_in_enabled").notNull().default(true),
+    // Optional sub-roles, e.g. Music: Vocals, Guitar, Bass. Seats are counted per role and labeled with it.
+    roles: text("roles").array().notNull().default(sql`'{}'::text[]`),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   },
   (t) => [uniqueIndex("ministries_slug_idx").on(t.slug)],
@@ -168,9 +170,10 @@ export const positionTemplates = pgTable(
     ministryId: uuid("ministry_id")
       .notNull()
       .references(() => ministries.id, { onDelete: "cascade" }),
+    role: text("role").notNull().default(""), // one of the ministry's roles, or "" when it has none
     count: integer("count").notNull().default(1),
   },
-  (t) => [uniqueIndex("position_templates_unique").on(t.massTimeId, t.ministryId)],
+  (t) => [uniqueIndex("position_templates_unique").on(t.massTimeId, t.ministryId, t.role)],
 );
 
 // A specific Mass on a specific date.

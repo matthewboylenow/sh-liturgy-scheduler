@@ -20,7 +20,8 @@ export default async function MassTimesPage({ searchParams }: { searchParams: Pr
     db.select().from(ministries).where(eq(ministries.active, true)).orderBy(asc(ministries.sortOrder)),
     db.select().from(positionTemplates),
   ]);
-  const tmap = new Map(templates.map((t) => [`${t.massTimeId}:${t.ministryId}`, t.count]));
+  const tmap = new Map(templates.map((t) => [`${t.massTimeId}:${t.ministryId}:${t.role}`, t.count]));
+  const rolesOf = (m: { roles: string[] }) => (m.roles.length ? m.roles : [""]);
   const editing = sp.edit ? times.find((t) => t.id === sp.edit) : null;
 
   return (
@@ -56,14 +57,26 @@ export default async function MassTimesPage({ searchParams }: { searchParams: Pr
                       )}
                     </td>
                     {mins.map((m) => (
-                      <td key={m.id} className="px-1 text-center">
-                        <select name={`count:${t.id}:${m.id}`} defaultValue={tmap.get(`${t.id}:${m.id}`) ?? 0} className="input min-w-16 w-16 px-1 py-1.5 text-center" aria-label={`${m.shortName} at ${t.label}`}>
-                          {COUNTS.map((n) => (
-                            <option key={n} value={n}>
-                              {n}
-                            </option>
+                      <td key={m.id} className="px-1 text-center align-top">
+                        <div className="inline-grid gap-1">
+                          {rolesOf(m).map((role) => (
+                            <label key={role} className="flex items-center justify-between gap-2 text-xs text-muted">
+                              {role && <span className="whitespace-nowrap">{role}</span>}
+                              <select
+                                name={`count:${t.id}:${m.id}:${encodeURIComponent(role)}`}
+                                defaultValue={tmap.get(`${t.id}:${m.id}:${role}`) ?? 0}
+                                className="input min-w-16 w-16 px-1 py-1.5 text-center"
+                                aria-label={`${role ? `${m.shortName} ${role}` : m.shortName} at ${t.label}`}
+                              >
+                                {COUNTS.map((n) => (
+                                  <option key={n} value={n}>
+                                    {n}
+                                  </option>
+                                ))}
+                              </select>
+                            </label>
                           ))}
-                        </select>
+                        </div>
                       </td>
                     ))}
                     <td>

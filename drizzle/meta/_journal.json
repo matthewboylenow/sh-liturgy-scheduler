@@ -15,6 +15,13 @@
       "when": 1790544599167,
       "tag": "0001_presider_imports",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1790548982866,
+      "tag": "0002_ministry_roles",
+      "breakpoints": true
     }
   ]
 }
