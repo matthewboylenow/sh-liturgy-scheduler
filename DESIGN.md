@@ -176,11 +176,25 @@ Navy ground, white header text, clock in `{typography.kiosk-clock}`. Mass tabs a
 
 ## Voice and copy
 
-Direct, short, warm. "You are signed up. Thank you." not "Your registration has been successfully submitted." Say "Mass" not "event", "slot" not "opportunity", "sub" not "substitute volunteer". Never "excited", "wonderful opportunity", "we look forward to". The parish is "Saint Helen", never "St. Helen's". No em dashes.
+Direct, short, plain. Written the way the parish office talks, not the way software talks. Say "Mass" not "event", "slot" not "opportunity", "sub" not "substitute volunteer". Never "excited", "wonderful opportunity", "we look forward to". The parish is "Saint Helen", never "St. Helen's". No em dashes.
 
-- Empty state: "You are not signed up for anything yet. See open slots."
-- Error: "That code is not right. Check it and try again."
-- Confirmation: "Mary Smith checked in. Thank you!"
+Rules, in order of how often they get broken:
+
+1. **No helper text that restates the control.** A field labeled "Mobile number or email" with a button "Send code" needs no sentence under it. Cut "We will send a six digit code", "No password needed", "You can always sign in with a code instead". If the reader could guess it, delete it.
+2. **No reassurance.** "Thank you!", "Don't worry", "Thanks for the heads up", "on its way", "we've got you". State what happened: "Mary Smith checked in." "New code sent."
+3. **No page subtitles that describe the page to itself.** "The next three weekends at a glance", "How we reach you and how you sign in", "Here is where things stand" say nothing the title and content do not. A subtitle earns its place only when it tells the reader something they cannot see: "Volunteers see published Masses only."
+4. **No exclamation points.** Anywhere.
+5. **No "we" narration.** "We sent a code to" becomes "Sent to". "We don't have an account for" becomes "No account matches". Use "we" only when the parish office is doing something for the person: "Contact the parish office."
+6. **Errors say what is wrong, in one sentence, and stop.** "That code is not right." Not "That code is not right. Check it and try again." The retry is implied by the form still being there.
+7. **Placeholders are not instructions.** Labels carry the name, placeholders stay empty unless a format example prevents a real mistake (a CSV sample). Never put a fake example name or address in a field.
+8. **Buttons are one or two words that name the outcome.** "Send code", "Sign in", "Finish", "Add", "Assign", "Drop". Not "Add person", "Finish setup", "Assign someone...".
+9. **No trailing ellipses** on pending states or loading text. "Loading", "Sending", "Checking" without dots is fine; the button is disabled, which says the rest.
+10. **Empty states are one sentence with the next action if there is one.** "Nothing scheduled. Sign up." "No Masses in this range."
+11. **Contractions are fine in texts, not in the interface.** Texts and emails can say "you're" and "can't"; buttons, labels, and alerts say "cannot" and "you are" so they read the same on every phone.
+
+- Empty state: "Nothing scheduled. Sign up."
+- Error: "That code is not right."
+- Confirmation: "Mary Smith checked in."
 
 ## Do and don't
 

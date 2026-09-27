@@ -85,7 +85,7 @@ export default async function PersonPage({ params, searchParams }: { params: Pro
                   </select>
                 </div>
                 <label className="flex items-center gap-2 self-end text-sm">
-                  <input type="checkbox" name="mfaRequired" defaultChecked={p.mfaRequired} /> Require code after password
+                  <input type="checkbox" name="mfaRequired" defaultChecked={p.mfaRequired} /> Code after password
                 </label>
               </>
             )}
@@ -125,12 +125,12 @@ export default async function PersonPage({ params, searchParams }: { params: Pro
               <StatusPill status={p.status} />
             </div>
             <p className="text-xs text-muted">
-              {p.passwordHash ? "Has a password." : "No password; signs in with a texted code."}
+              {p.passwordHash ? "Has a password." : "No password. Signs in with a code."}
               {p.entraOid ? " Linked to Microsoft 365." : ""}
             </p>
             <form action={resendInvite} className="mt-3">
               <input type="hidden" name="id" value={p.id} />
-              <SubmitButton className="btn-ghost w-full" pendingText="Sending...">
+              <SubmitButton className="btn-ghost w-full" pendingText="Sending">
                 {p.status === "invited" ? "Resend invite" : "Send setup link"}
               </SubmitButton>
             </form>
@@ -138,7 +138,7 @@ export default async function PersonPage({ params, searchParams }: { params: Pro
               <form action={setTempPassword} className="mt-3 space-y-2 border-t border-line pt-3">
                 <input type="hidden" name="id" value={p.id} />
                 <label className="label">Set a temporary password</label>
-                <input name="password" className="input" minLength={8} placeholder="At least 8 characters" required />
+                <input name="password" className="input" minLength={8} aria-label="Temporary password, at least 8 characters" required />
                 <SubmitButton className="btn-ghost w-full">Set password and activate</SubmitButton>
               </form>
             )}
@@ -147,7 +147,7 @@ export default async function PersonPage({ params, searchParams }: { params: Pro
           <div className="card p-4">
             <h2 className="mb-2 text-lg">Upcoming</h2>
             {upcoming.length === 0 ? (
-              <p className="text-sm text-muted">Not signed up for anything.</p>
+              <p className="text-sm text-muted">Nothing scheduled.</p>
             ) : (
               <ul className="space-y-1 text-sm">
                 {upcoming.map((r) => (

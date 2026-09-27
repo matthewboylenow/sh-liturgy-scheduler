@@ -31,7 +31,7 @@ export async function POST(req: NextRequest) {
   const twiml = (msg: string) => new NextResponse(`<?xml version="1.0" encoding="UTF-8"?><Response><Message>${escapeXml(msg)}</Message></Response>`, { headers: { "content-type": "text/xml" } });
 
   const [user] = await db.select().from(users).where(eq(users.phone, from)).limit(1);
-  if (!user) return twiml(`We don't recognize this number. Sign in at ${env.appUrl()} to update your profile.`);
+  if (!user) return twiml(`This number is not on a ${env.parishName()} account. Sign in at ${env.appUrl()} to update your profile.`);
 
   if (/^(STOP|UNSUBSCRIBE|CANCEL|END|QUIT)$/.test(body)) {
     // Twilio handles STOP itself for long codes; we also honor the preference.
@@ -41,7 +41,7 @@ export async function POST(req: NextRequest) {
 
   const yes = /^(Y|YES|CONFIRM|CONFIRMED|OK|👍)/.test(body);
   const no = /^(N|NO|CANT|CAN'T|CANNOT|SUB)/.test(body);
-  if (!yes && !no) return twiml(`Reply YES to confirm your next Mass or NO if you need a sub. Manage everything at ${env.appUrl()}/app`);
+  if (!yes && !no) return twiml(`Reply YES to confirm your next Mass or NO if you need a sub. ${env.appUrl()}/app`);
 
   // The next upcoming assignment(s) that were reminded most recently
   const rows = await db
@@ -54,19 +54,19 @@ export async function POST(req: NextRequest) {
     .limit(5);
   const reminded = rows.filter((r) => r.a.reminderSentAt);
   const target = (reminded.length ? reminded : rows).slice(0, 1);
-  if (!target.length) return twiml("You have nothing scheduled right now. Thanks for checking in.");
+  if (!target.length) return twiml("You have nothing scheduled right now.");
 
   const r = target[0];
   const when = `${fmtDate(r.l.date)} ${fmtTime(r.l.time)}`;
   if (yes) {
     await db.update(assignments).set({ status: "confirmed", updatedAt: new Date() }).where(eq(assignments.id, r.a.id));
     await db.insert(auditLog).values({ actorId: user.id, action: "assignment.confirm.sms", subjectId: r.a.id });
-    return twiml(`Thanks, ${user.firstName}. You're confirmed for ${when}.`);
+    return twiml(`Thanks, ${user.firstName}. You are confirmed for ${when}.`);
   }
   await db.update(assignments).set({ status: "sub_requested", updatedAt: new Date() }).where(eq(assignments.id, r.a.id));
   await db.insert(auditLog).values({ actorId: user.id, action: "assignment.request_sub.sms", subjectId: r.a.id });
   await notifyMinistryOpenSlot(r.p.ministryId, r.l, user.id);
-  return twiml(`Got it. We marked ${when} as needing a sub and let your ministry know. Thanks for the heads up.`);
+  return twiml(`Got it. ${when} is marked as needing a sub and your ministry has been told.`);
 }
 
 function escapeXml(s: string) {

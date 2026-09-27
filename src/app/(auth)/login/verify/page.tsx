@@ -2,7 +2,7 @@ import { resendCode, verifyLoginCode, verifyMfaCode } from "@/app/(auth)/actions
 import { Alert, SubmitButton } from "@/components/ui";
 import { formatPhone } from "@/lib/phone";
 
-export const metadata = { title: "Enter your code" };
+export const metadata = { title: "Enter the code" };
 
 export default async function VerifyPage({ searchParams }: { searchParams: Promise<Record<string, string | undefined>> }) {
   const sp = await searchParams;
@@ -14,9 +14,9 @@ export default async function VerifyPage({ searchParams }: { searchParams: Promi
 
   return (
     <div className="card w-full max-w-md p-6">
-      <h2 className="mb-1 text-lg">Enter your code</h2>
+      <h2 className="mb-1 text-lg">Enter the code</h2>
       <p className="mb-4 text-sm text-muted">
-        We sent a six digit code to <span className="font-medium text-ink">{pretty}</span>.
+        Sent to <span className="font-medium text-ink">{pretty}</span>.
       </p>
       {sp.error && (
         <div className="mb-4">
@@ -25,7 +25,7 @@ export default async function VerifyPage({ searchParams }: { searchParams: Promi
       )}
       {sp.sent && (
         <div className="mb-4">
-          <Alert kind="success">A new code is on its way.</Alert>
+          <Alert kind="success">New code sent.</Alert>
         </div>
       )}
       <form action={mfa ? verifyMfaCode : verifyLoginCode} className="space-y-4">
@@ -41,9 +41,8 @@ export default async function VerifyPage({ searchParams }: { searchParams: Promi
           maxLength={6}
           required
           autoFocus
-          placeholder="000000"
         />
-        <SubmitButton pendingText="Checking...">Continue</SubmitButton>
+        <SubmitButton pendingText="Checking">Continue</SubmitButton>
       </form>
       <form action={resendCode} className="mt-4 text-center">
         <input type="hidden" name="dest" value={dest} />
@@ -51,7 +50,7 @@ export default async function VerifyPage({ searchParams }: { searchParams: Promi
         <input type="hidden" name="area" value={area} />
         {mfa && <input type="hidden" name="mfa" value="1" />}
         <button type="submit" className="text-xs text-muted underline">
-          Didn&apos;t get it? Send another
+          Send a new code
         </button>
       </form>
     </div>

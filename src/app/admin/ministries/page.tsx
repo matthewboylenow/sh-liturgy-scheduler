@@ -19,7 +19,7 @@ export default async function MinistriesPage({ searchParams }: { searchParams: P
 
   return (
     <>
-      <PageTitle title="Ministries" subtitle="Each ministry is a role people sign up for. Presider is a ministry too, so clergy show on the schedule." />
+      <PageTitle title="Ministries" subtitle="Presider and Deacon are ministries too, so clergy appear on the schedule." />
       <Flash sp={sp} />
       <div className="grid gap-4 lg:grid-cols-3">
         <div className="card overflow-x-auto lg:col-span-2">
@@ -63,7 +63,7 @@ export default async function MinistriesPage({ searchParams }: { searchParams: P
               {list.length === 0 && (
                 <tr>
                   <td colSpan={5} className="py-6 text-center text-muted">
-                    No ministries yet. Add the first one on the right, or run the seed script.
+                    No ministries yet.
                   </td>
                 </tr>
               )}
@@ -76,12 +76,12 @@ export default async function MinistriesPage({ searchParams }: { searchParams: P
           {editing && <input type="hidden" name="id" value={editing.id} />}
           <div>
             <label className="label">Name</label>
-            <input name="name" className="input" defaultValue={editing?.name} placeholder="Extraordinary Ministers of Holy Communion" required />
+            <input name="name" className="input" defaultValue={editing?.name} required />
           </div>
           <div className="grid grid-cols-2 gap-2">
             <div>
               <label className="label">Short name</label>
-              <input name="shortName" className="input" defaultValue={editing?.shortName} placeholder="EM" required maxLength={16} />
+              <input name="shortName" className="input" defaultValue={editing?.shortName} required maxLength={16} />
             </div>
             <div>
               <label className="label">Color</label>
@@ -89,7 +89,7 @@ export default async function MinistriesPage({ searchParams }: { searchParams: P
             </div>
           </div>
           <div>
-            <label className="label">Description (shown to volunteers)</label>
+            <label className="label">Description</label>
             <input name="description" className="input" defaultValue={editing?.description ?? ""} />
           </div>
           <div className="grid grid-cols-2 gap-2">

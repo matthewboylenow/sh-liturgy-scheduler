@@ -22,7 +22,7 @@ export default async function SchedulePage({ searchParams }: { searchParams: Pro
 
   return (
     <>
-      <PageTitle title="Schedule" subtitle="Generate Masses from the weekly pattern, fill in the gaps, then publish so volunteers can sign up." />
+      <PageTitle title="Schedule" subtitle="Volunteers see published Masses only." />
       <Flash sp={sp} />
 
       <div className="grid gap-4 lg:grid-cols-3">
@@ -98,7 +98,7 @@ export default async function SchedulePage({ searchParams }: { searchParams: Pro
                 {list.length === 0 && (
                   <tr>
                     <td colSpan={4} className="py-6 text-center text-muted">
-                      No Masses in this range. Generate some on the right.
+                      No Masses in this range.
                     </td>
                   </tr>
                 )}
@@ -125,7 +125,7 @@ export default async function SchedulePage({ searchParams }: { searchParams: Pro
           <div className="space-y-4">
             <form action={generateLiturgies} className="card space-y-3 p-4">
               <h2 className="text-lg">Generate from the weekly pattern</h2>
-              <p className="text-xs text-muted">Creates one Mass for each active Mass time on each matching date. Dates that already have that Mass are skipped.</p>
+              <p className="text-xs text-muted">One Mass per active Mass time per date. Dates that already have that Mass are skipped.</p>
               <div className="grid grid-cols-2 gap-2">
                 <div>
                   <label className="label">From</label>
@@ -139,12 +139,12 @@ export default async function SchedulePage({ searchParams }: { searchParams: Pro
               <label className="flex items-center gap-2 text-sm">
                 <input type="checkbox" name="publish" /> Publish right away
               </label>
-              <SubmitButton pendingText="Generating...">Generate</SubmitButton>
+              <SubmitButton pendingText="Generating">Generate</SubmitButton>
             </form>
 
             <form action={createOneLiturgy} className="card space-y-3 p-4">
               <h2 className="text-lg">Add a single Mass</h2>
-              <p className="text-xs text-muted">Holy days, Christmas, funerals, anything outside the pattern. Add positions on the next screen.</p>
+              <p className="text-xs text-muted">For holy days, Christmas, funerals. Positions are added on the next screen.</p>
               <div className="grid grid-cols-2 gap-2">
                 <input type="date" name="date" className="input" required />
                 <input type="time" name="time" className="input" required />

@@ -56,7 +56,7 @@ vercel.json             two crons
 - Volunteers only ever see sign-up buttons for `user.ministryIds`. Coordinators only manage `user.coordinatorOf`. Keep it that way.
 - Mutations are server actions that `redirect()` back with `?ok=` or `?error=` in the query string; pages render them through `<Flash>` or `<Alert>`. No client state libraries.
 - `db` is a lazy Proxy so importing it never fails at build. Neon HTTP driver has no interactive transactions; rely on unique indexes and single statements for atomicity (claimPosition already does).
-- Email/SMS copy lives next to the code that sends it. Keep it short. No em dashes anywhere, in UI or messages. "Saint Helen", never "St. Helen's". "Mass", "slot", "sub".
+- Email/SMS copy lives next to the code that sends it. Keep it short. No em dashes anywhere, in UI or messages. "Saint Helen", never "St. Helen's". "Mass", "slot", "sub". Before writing any user-facing sentence, read "Voice and copy" in DESIGN.md: no helper text that restates the control, no reassurance, no exclamation points, no page subtitles that describe the page.
 - Staff (admin, coordinator) always get an OTP after password. Do not add a bypass.
 - Kiosk routes authenticate with the `sh_kiosk` cookie only and are limited to today's published Masses. Do not widen that.
 

@@ -51,7 +51,7 @@ export async function createPerson(formData: FormData) {
   const sendNow = formData.get("sendInvite") === "on";
 
   if (!firstName || !lastName) fail("/admin/people", "First and last name are required.");
-  if (!phone && !email) fail("/admin/people", "A mobile number or email is required so they can sign in.");
+  if (!phone && !email) fail("/admin/people", "A mobile number or email is required.");
   if (actor.role !== "admin") {
     // coordinators may only add people to their own ministries
     if (ministryIds.some((m) => !actor.coordinatorOf.includes(m))) fail("/admin/people", "You can only add people to ministries you coordinate.");
@@ -101,7 +101,7 @@ export async function updatePerson(formData: FormData) {
   const coordinatorIds = new Set(formData.getAll("coordinatorIds").map(String).filter(Boolean));
 
   if (!firstName || !lastName) fail(path, "Name is required.");
-  if (!phone && !email) fail(path, "Keep at least a mobile number or an email.");
+  if (!phone && !email) fail(path, "A mobile number or email is required.");
 
   if (phone) {
     const c = await db.select({ id: users.id }).from(users).where(eq(users.phone, phone)).limit(1);
@@ -165,7 +165,7 @@ export async function resendInvite(formData: FormData) {
   if (!u) fail("/admin/people", "Person not found.");
   const token = await createInvite(u.id);
   const sent = await sendInvite(u, token, `${actor.firstName} ${actor.lastName}`);
-  ok(`/admin/people/${id}`, sent.length ? `Invite sent by ${sent.join(" and ")}.` : "Invite created but nothing could be sent. Check Twilio/Resend settings.");
+  ok(`/admin/people/${id}`, sent.length ? `Invite sent by ${sent.join(" and ")}.` : "Invite created, but nothing was sent. Check the Twilio and Resend settings.");
 }
 
 export async function setTempPassword(formData: FormData) {
@@ -183,7 +183,7 @@ export async function importPeople(formData: FormData) {
   const actor = await requireAdmin();
   const text = str(formData, "csv");
   const sendNow = formData.get("sendInvite") === "on";
-  if (!text) fail("/admin/people/import", "Paste some CSV first.");
+  if (!text) fail("/admin/people/import", "Paste a CSV first.");
 
   const allMinistries = await db.select().from(ministries);
   const byKey = new Map<string, string>();
@@ -370,7 +370,7 @@ export async function generateLiturgies(formData: FormData) {
   const publish = formData.get("publish") === "on";
   if (!/^\d{4}-\d{2}-\d{2}$/.test(from) || !/^\d{4}-\d{2}-\d{2}$/.test(to) || to < from) fail("/admin/schedule", "Pick a valid date range.");
   const days = (new Date(to).getTime() - new Date(from).getTime()) / 86400_000;
-  if (days > 200) fail("/admin/schedule", "Generate at most about six months at a time.");
+  if (days > 200) fail("/admin/schedule", "Six months at a time at most.");
 
   const times = await db.query.massTimes.findMany({ where: eq(massTimes.active, true), with: { templates: { with: { ministry: true } } } });
   const existing = await db

@@ -30,7 +30,7 @@ export default async function LiturgyPage({
         subtitle={[l.title, l.location].filter(Boolean).join(" · ")}
         actions={
           <Link href="/app/schedule" className="btn-ghost">
-            Back to sign-ups
+            All Masses
           </Link>
         }
       />
@@ -53,7 +53,7 @@ export default async function LiturgyPage({
         <div className="card mb-4 flex flex-wrap items-center justify-between gap-3 border-navy/30 p-4">
           <div className="text-sm">
             You are serving at this Mass.
-            {mine.status === "sub_requested" && <span className="ml-2 text-yellow-800">You asked for a sub.</span>}
+            {mine.status === "sub_requested" && <span className="ml-2 text-yellow-800">Sub requested.</span>}
           </div>
           <div className="flex gap-2">
             {mine.status !== "confirmed" && mine.status !== "sub_requested" && (
@@ -69,7 +69,7 @@ export default async function LiturgyPage({
                 <input type="hidden" name="assignmentId" value={mine.id} />
                 <input type="hidden" name="action" value="undo_sub" />
                 <input type="hidden" name="return" value={self} />
-                <button className="btn-ghost px-3 py-1 text-xs">Never mind, I can make it</button>
+                <button className="btn-ghost px-3 py-1 text-xs">I can make it after all</button>
               </form>
             ) : (
               <form action={updateAssignment}>

@@ -16,14 +16,14 @@ export async function notifyMinistryOpenSlot(ministryId: string, liturgy: { id: 
     .where(eq(ministryMembers.ministryId, ministryId));
   const when = `${fmtDateLong(liturgy.date)} at ${fmtTime(liturgy.time)}`;
   const url = `${env.appUrl()}/app/liturgy/${liturgy.id}`;
-  const text = `${env.parishName()} Liturgy: a ${m?.shortName ?? "ministry"} slot just opened for ${when}. Can you take it? ${url}`;
+  const text = `${env.parishName()} Liturgy: ${m?.shortName ?? "a"} slot open for ${when}. Take it: ${url}`;
   await Promise.all(
     members
       .filter(({ u }) => u.id !== excludeUserId && u.status === "active")
       .map(async ({ u }) => {
         if (u.notifySms && u.phone) return sendSms(u.phone, text, { userId: u.id, kind: "open_slot" });
         if (u.notifyEmail && u.email)
-          return sendEmail(u.email, `Open ${m?.shortName ?? ""} slot: ${when}`, emailShell("A slot just opened", `<p>${text}</p>`), { userId: u.id, kind: "open_slot" }, text);
+          return sendEmail(u.email, `Open ${m?.shortName ?? ""} slot: ${when}`, emailShell("A slot opened", `<p>${text}</p>`), { userId: u.id, kind: "open_slot" }, text);
       }),
   );
 }
@@ -51,7 +51,7 @@ export async function sendReminders(windowStartHours = 36, windowEndHours = 60) 
     if (r.a.reminderSentAt) continue;
     const when = `${fmtDateLong(r.l.date)} at ${fmtTime(r.l.time)}`;
     const url = `${env.appUrl()}/app/liturgy/${r.l.id}`;
-    const smsText = `${env.parishName()} Liturgy: you're scheduled as ${r.m.shortName}${r.p.label ? ` (${r.p.label})` : ""} on ${when}. Reply YES to confirm or NO if you can't make it. ${url}`;
+    const smsText = `${env.parishName()} Liturgy: you are scheduled as ${r.m.shortName}${r.p.label ? ` (${r.p.label})` : ""} on ${when}. Reply YES to confirm or NO if you cannot make it. ${url}`;
     let any = false;
     if (r.u.notifySms && r.u.phone) {
       const res = await sendSms(r.u.phone, smsText, { userId: r.u.id, kind: "reminder" });
@@ -62,7 +62,7 @@ export async function sendReminders(windowStartHours = 36, windowEndHours = 60) 
         r.u.email,
         `Reminder: ${r.m.shortName} on ${fmtDate(r.l.date)} ${fmtTime(r.l.time)}`,
         emailShell(
-          "You're serving this weekend",
+          "You are scheduled this weekend",
           `<p>You are scheduled as <strong>${r.m.name}</strong>${r.p.label ? ` (${r.p.label})` : ""} on <strong>${when}</strong>${r.l.title ? `, ${r.l.title}` : ""}.</p>
            ${r.l.notes ? `<p><em>${r.l.notes}</em></p>` : ""}
            <p><a href="${url}" style="display:inline-block;background:#1F346D;color:#fff;padding:10px 16px;border-radius:6px;text-decoration:none">Confirm or request a sub</a></p>`,
@@ -131,8 +131,8 @@ export async function sendOpenSlotDigests(daysAhead = 10) {
       any ||= (
         await sendEmail(
           u.email,
-          `Open slots coming up (${items.size})`,
-          emailShell("Can you help fill these?", `<ul>${[...items].map((i) => `<li>${i}</li>`).join("")}</ul><p><a href="${url}" style="display:inline-block;background:#CD5334;color:#fff;padding:10px 16px;border-radius:6px;text-decoration:none">See open slots</a></p>`),
+          `${items.size} open slot${items.size === 1 ? "" : "s"} coming up`,
+          emailShell("Open slots in your ministries", `<ul>${[...items].map((i) => `<li>${i}</li>`).join("")}</ul><p><a href="${url}" style="display:inline-block;background:#CD5334;color:#fff;padding:10px 16px;border-radius:6px;text-decoration:none">See open slots</a></p>`),
           { userId: u.id, kind: "open_slots_digest" },
           text,
         )

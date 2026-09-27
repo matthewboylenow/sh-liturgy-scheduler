@@ -23,15 +23,15 @@ export default async function AppHome({ searchParams }: { searchParams: Promise<
 
   return (
     <>
-      <PageTitle title={`Hi, ${user.firstName}`} subtitle="Here is where things stand for the coming weekends." />
+      <PageTitle title={`Hi, ${user.firstName}`} />
       {sp.welcome && (
         <div className="mb-4">
-          <Alert kind="success">Your account is set up. Pick some Masses below.</Alert>
+          <Alert kind="success">Your account is ready.</Alert>
         </div>
       )}
       {sp.denied && (
         <div className="mb-4">
-          <Alert kind="warn">That area is for parish staff.</Alert>
+          <Alert kind="warn">That page is for parish staff.</Alert>
         </div>
       )}
 
@@ -77,7 +77,7 @@ export default async function AppHome({ searchParams }: { searchParams: Promise<
         <div className="space-y-4">
           <div className="card p-4">
             <div className="text-3xl font-serif text-rust">{open}</div>
-            <div className="text-sm text-muted">open slots in your ministries over the next six weeks</div>
+            <div className="text-sm text-muted">open slots in your ministries, next six weeks</div>
             <Link href="/app/schedule" className="btn-accent mt-3 w-full">
               Sign up
             </Link>
@@ -85,7 +85,7 @@ export default async function AppHome({ searchParams }: { searchParams: Promise<
           <div className="card p-4">
             <h3 className="mb-2 text-sm font-semibold">Your ministries</h3>
             {myMinistries.length === 0 ? (
-              <p className="text-sm text-muted">None yet. The parish office can add you.</p>
+              <p className="text-sm text-muted">None yet. Ask the parish office to add you.</p>
             ) : (
               <ul className="flex flex-wrap gap-1.5">
                 {myMinistries.map((m) => (

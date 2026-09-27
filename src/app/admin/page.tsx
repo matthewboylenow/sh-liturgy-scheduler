@@ -33,22 +33,22 @@ export default async function AdminHome({ searchParams }: { searchParams: Promis
 
   return (
     <>
-      <PageTitle title="Overview" subtitle="The next three weekends at a glance." actions={<Link href="/admin/schedule" className="btn-primary">Manage schedule</Link>} />
+      <PageTitle title="Overview" subtitle="Next three weekends." actions={<Link href="/admin/schedule" className="btn-primary">Schedule</Link>} />
       <Flash sp={sp} />
       {sp.denied && <p className="mb-4 text-sm text-rust">That page is for admins.</p>}
 
       <div className="mb-6 grid gap-3 sm:grid-cols-4">
         <Stat label="Open slots, next 3 weeks" value={openSoon.length} tone={openSoon.length ? "rust" : "ok"} />
         <Stat label="Sub requests" value={subs.filter((s) => scope(s.p.ministryId)).length} tone={subs.length ? "gold" : "ok"} />
-        <Stat label="Draft Masses not yet published" value={drafts[0]?.n ?? 0} href="/admin/schedule?status=draft" />
-        <Stat label="People still to finish setup" value={invited[0]?.n ?? 0} href="/admin/people?status=invited" />
+        <Stat label="Unpublished drafts" value={drafts[0]?.n ?? 0} href="/admin/schedule?status=draft" />
+        <Stat label="Invites not yet accepted" value={invited[0]?.n ?? 0} href="/admin/people?status=invited" />
       </div>
 
       <div className="grid gap-4 lg:grid-cols-2">
         <div className="card">
           <div className="border-b border-line px-4 py-2 font-semibold">Coverage by Mass</div>
           <ul className="divide-y divide-line/70 text-sm">
-            {upcoming.length === 0 && <li className="px-4 py-4 text-muted">Nothing published in the next three weeks.</li>}
+            {upcoming.length === 0 && <li className="px-4 py-4 text-muted">No published Masses in the next three weeks.</li>}
             {upcoming.map((l) => {
               const c = coverage(l);
               const pct = c.total ? Math.round((c.filled / c.total) * 100) : 0;
@@ -74,7 +74,7 @@ export default async function AdminHome({ searchParams }: { searchParams: Promis
           <div className="card">
             <div className="border-b border-line px-4 py-2 font-semibold">Needs a sub</div>
             <ul className="divide-y divide-line/70 text-sm">
-              {subs.filter((s) => scope(s.p.ministryId)).length === 0 && <li className="px-4 py-4 text-muted">No one is asking for a sub.</li>}
+              {subs.filter((s) => scope(s.p.ministryId)).length === 0 && <li className="px-4 py-4 text-muted">None.</li>}
               {subs
                 .filter((s) => scope(s.p.ministryId))
                 .map((s) => (
@@ -92,7 +92,7 @@ export default async function AdminHome({ searchParams }: { searchParams: Promis
           <div className="card">
             <div className="border-b border-line px-4 py-2 font-semibold">Open slots, soonest first</div>
             <ul className="divide-y divide-line/70 text-sm">
-              {openSoon.length === 0 && <li className="px-4 py-4 text-muted">Everything is covered.</li>}
+              {openSoon.length === 0 && <li className="px-4 py-4 text-muted">None.</li>}
               {openSoon.slice(0, 12).map(({ l, p }) => (
                 <li key={p.id} className="flex items-center justify-between px-4 py-2">
                   <span className="flex items-center gap-2">

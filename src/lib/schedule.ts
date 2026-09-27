@@ -112,14 +112,14 @@ export async function claimPosition(user: SessionUser, positionId: string, actor
   const isSelf = acting === user.id;
 
   if (isSelf) {
-    if (pos.liturgy.status !== "published") throw new ScheduleError("That Mass is not open for sign-ups.");
+    if (pos.liturgy.status !== "published") throw new ScheduleError("That Mass is not open for sign-up.");
     if (pos.liturgy.startsAt < new Date()) throw new ScheduleError("That Mass has already happened.");
     if (!user.ministryIds.includes(pos.ministryId)) throw new ScheduleError("You are not a member of that ministry.");
   }
 
   const live = pos.assignments.find((a) => a.status !== "declined");
-  if (live && live.userId === user.id) throw new ScheduleError("You are already signed up for that slot.");
-  if (live && live.status !== "sub_requested") throw new ScheduleError("Someone already took that slot.");
+  if (live && live.userId === user.id) throw new ScheduleError("You already have that slot.");
+  if (live && live.status !== "sub_requested") throw new ScheduleError("That slot is taken.");
 
   // One live assignment per person per Mass
   const already = await db
@@ -142,7 +142,7 @@ export async function claimPosition(user: SessionUser, positionId: string, actor
       assignedById: isSelf ? null : acting,
     });
   } catch {
-    throw new ScheduleError("Someone grabbed that slot a moment ago. Pick another.");
+    throw new ScheduleError("Someone took that slot a moment ago.");
   }
   await db.insert(auditLog).values({
     actorId: acting,
@@ -165,7 +165,7 @@ export async function changeAssignment(
   });
   if (!a || a.status === "declined") throw new ScheduleError("That assignment no longer exists.");
   const own = a.userId === actor.id;
-  if (!own && !canManageMinistry(actor, a.position.ministryId)) throw new ScheduleError("You can't change that assignment.");
+  if (!own && !canManageMinistry(actor, a.position.ministryId)) throw new ScheduleError("You cannot change that assignment.");
   if (a.position.liturgy.startsAt < new Date() && action !== "confirm") throw new ScheduleError("That Mass has already happened.");
 
   const status = action === "drop" ? "declined" : action === "request_sub" ? "sub_requested" : action === "confirm" ? "confirmed" : "signed_up";

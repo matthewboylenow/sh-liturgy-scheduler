@@ -1,4 +1,5 @@
 import Link from "next/link";
+import Image from "next/image";
 import type { SessionUser } from "@/lib/auth";
 import { env } from "@/lib/env";
 
@@ -19,7 +20,7 @@ export function Shell({
       <header className="border-b border-line bg-white">
         <div className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-4 py-3">
           <Link href={area === "admin" ? "/admin" : "/app"} className="flex items-center gap-2">
-            <span className="flex h-8 w-8 items-center justify-center rounded-full bg-navy font-serif text-white">†</span>
+            <Image src="/brand/saint-helen-mark.png" alt="" width={32} height={32} className="h-8 w-8" />
             <span className="font-serif text-lg text-navy">{env.parishName()} Liturgy</span>
             {area === "admin" && <span className="pill bg-rust/10 text-rust">Admin</span>}
           </Link>

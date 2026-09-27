@@ -29,7 +29,7 @@ Done from a Claude Code session with the production `DATABASE_URL`:
 
 - `npm run db:migrate` applied `drizzle/0000_initial.sql` (14 tables, journal row 1). The script now goes through the app's own driver (`scripts/migrate.ts`), so it works over Neon HTTP from networks where port 5432 is blocked. `npm run db:migrate:kit` is the old drizzle-kit path if you ever need it.
 - `npm run seed` created the 9 ministries, 6 Mass times (Sat 5, Sun 7:30 / 9 / 10:30 / 12 / 5) with default position counts, and the admin account `matthew@sainthelen.org` (Matthew Boyle, role admin, active).
-- The admin has **no password and no phone yet** on purpose (nothing secret had to pass through chat). Sign in at `/admin/login` on the "Text me a code" tab with the email address; the code goes by email. Then Profile → add a password and your mobile number.
+- The admin account is `mboyle@sainthelen.org` with the password Matthew chose (set Sept 27, bcrypt). No phone yet, so the code after the password goes by email until a mobile number is added in Profile.
 - A staff sign-in by email code was exercised end to end against this database (with `DEV_OTP_ECHO=true`) and works. Two `otp_codes`, two `audit_log`, and two `notification_log` rows from that test remain; harmless.
 
 If the pattern is different, fix Mass times and counts in Admin → Mass times. The seed is idempotent; re-running it never overwrites what is there.
@@ -52,7 +52,7 @@ npm run seed
 4. Under the Messaging Service → Integration → Incoming messages → "Send a webhook": `https://<app url>/api/twilio/inbound`, HTTP POST. This is what makes YES / NO replies work.
 5. Vercel env: `TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN`, `TWILIO_MESSAGING_SERVICE_SID`. (You can use `TWILIO_FROM_NUMBER` instead of the service SID, but a Messaging Service is what 10DLC wants.) Redeploy.
 
-Check: open `/admin/login`, "Text me a code" tab, enter your email (or your mobile once it is on the account). You should get the six-digit code within seconds. Log → Texts and emails in the admin shows the send.
+Check: open `/admin/login`, Password tab, sign in with `mboyle@sainthelen.org`. You should get the six-digit code within seconds. Log → Texts and emails in the admin shows the send.
 
 Stopgap while waiting on 10DLC: set `DEV_OTP_ECHO=true` in Vercel, redeploy, sign in, and read the code from Vercel → Logs. Remove it after.
 

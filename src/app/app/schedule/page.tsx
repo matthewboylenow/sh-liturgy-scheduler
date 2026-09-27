@@ -36,12 +36,12 @@ export default async function SchedulePage({ searchParams }: { searchParams: Pro
   return (
     <>
       <PageTitle
-        title="Sign up to serve"
-        subtitle="Only the ministries you belong to are shown with sign-up buttons."
+        title="Sign up"
+        subtitle="Masses with slots for your ministries."
         actions={
           <>
             <Link href={`/app/schedule?weeks=${weeks}${onlyOpen ? "" : "&open=1"}`} className={onlyOpen ? "btn-primary" : "btn-ghost"}>
-              {onlyOpen ? "Showing open only" : "Show open only"}
+              {onlyOpen ? "Show all" : "Open slots only"}
             </Link>
             <Link href={`/app/schedule?weeks=${weeks === 8 ? 16 : 8}${onlyOpen ? "&open=1" : ""}`} className="btn-ghost">
               {weeks === 8 ? "Next 16 weeks" : "Next 8 weeks"}
@@ -56,11 +56,11 @@ export default async function SchedulePage({ searchParams }: { searchParams: Pro
       )}
       {sp.ok === "signed_up" && (
         <div className="mb-4">
-          <Alert kind="success">You are signed up. Thank you.</Alert>
+          <Alert kind="success">You are signed up.</Alert>
         </div>
       )}
-      {user.ministryIds.length === 0 && <Alert kind="warn">You are not in any ministries yet, so there is nothing to sign up for. The parish office can add you.</Alert>}
-      {list.length === 0 && user.ministryIds.length > 0 && <p className="text-sm text-muted">Nothing to show for this range.</p>}
+      {user.ministryIds.length === 0 && <Alert kind="warn">You are not in a ministry yet. Ask the parish office to add you.</Alert>}
+      {list.length === 0 && user.ministryIds.length > 0 && <p className="text-sm text-muted">No Masses in this range.</p>}
 
       <div className="space-y-8">
         {[...weekends.entries()].map(([key, ls]) => (

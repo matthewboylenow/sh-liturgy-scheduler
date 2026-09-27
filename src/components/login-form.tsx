@@ -3,17 +3,17 @@ import { SubmitButton, Alert } from "@/components/ui";
 import Link from "next/link";
 
 const ERRORS: Record<string, string> = {
-  bad_destination: "Enter the mobile number or email address the parish has on file for you.",
-  no_account: "We don't have an account for that number or email. Contact the parish office and we will set you up.",
-  not_staff: "That account is a volunteer account. Sign in through the volunteer portal instead.",
-  bad_login: "That username or password is not right.",
-  mfa_no_destination: "Your account has no phone or email for the verification code. Contact the parish office.",
-  mfa_expired: "That sign-in attempt timed out. Start again.",
-  ms_not_configured: "Microsoft sign-in has not been set up yet.",
+  bad_destination: "Enter a mobile number or email address.",
+  no_account: "No account matches that number or email. Contact the parish office.",
+  not_staff: "That is a volunteer account. Use the volunteer sign-in.",
+  bad_login: "Wrong username or password.",
+  mfa_no_destination: "This account has no phone or email for the code. Contact the parish office.",
+  mfa_expired: "That sign-in timed out. Start again.",
+  ms_not_configured: "Microsoft sign-in is not set up yet.",
   ms_denied: "Microsoft sign-in was cancelled.",
-  ms_state: "Microsoft sign-in did not complete. Try again.",
-  ms_exchange: "Microsoft sign-in failed. Try again or use another method.",
-  ms_no_account: "Your Microsoft account is not linked to a staff account here. An admin needs to add you first.",
+  ms_state: "Microsoft sign-in did not finish. Try again.",
+  ms_exchange: "Microsoft sign-in failed. Try again or use a password.",
+  ms_no_account: "No staff account matches that Microsoft account. Ask an admin to add you.",
 };
 
 export function LoginForm({
@@ -41,7 +41,7 @@ export function LoginForm({
           href={`${base}?tab=code${next ? `&next=${encodeURIComponent(next)}` : ""}`}
           className={`flex-1 rounded px-3 py-1.5 text-center font-medium ${activeTab === "code" ? "bg-navy text-white" : "text-muted hover:text-ink"}`}
         >
-          Text me a code
+          Code
         </Link>
         <Link
           href={`${base}?tab=password${next ? `&next=${encodeURIComponent(next)}` : ""}`}
@@ -65,10 +65,9 @@ export function LoginForm({
             <label className="label" htmlFor="destination">
               Mobile number or email
             </label>
-            <input id="destination" name="destination" className="input" inputMode="tel" autoComplete="tel" placeholder="(908) 555-0123" required autoFocus />
-            <p className="mt-1 text-xs text-muted">We will send a six digit code. No password needed.</p>
+            <input id="destination" name="destination" className="input" inputMode="email" autoComplete="username" required autoFocus />
           </div>
-          <SubmitButton pendingText="Sending...">Send code</SubmitButton>
+          <SubmitButton pendingText="Sending">Send code</SubmitButton>
         </form>
       ) : (
         <form action={passwordLogin} className="space-y-4">
@@ -86,8 +85,7 @@ export function LoginForm({
             </label>
             <input id="password" name="password" type="password" className="input" autoComplete="current-password" required />
           </div>
-          <SubmitButton pendingText="Checking...">Sign in</SubmitButton>
-          {area === "admin" && <p className="text-xs text-muted">Staff accounts always get a verification code after the password.</p>}
+          <SubmitButton pendingText="Checking">Sign in</SubmitButton>
         </form>
       )}
 

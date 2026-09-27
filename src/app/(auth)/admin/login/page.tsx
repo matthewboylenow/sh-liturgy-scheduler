@@ -12,10 +12,10 @@ export default async function AdminLoginPage({ searchParams }: { searchParams: P
   if (user && isStaff(user)) redirect(sp.next && sp.next.startsWith("/") ? sp.next : "/admin");
   return (
     <>
-      <div className="mb-3 text-sm font-medium text-rust">Staff and coordinators</div>
+      <div className="mb-3 text-sm font-medium text-rust">Staff sign-in</div>
       <LoginForm area="admin" tab={sp.tab ?? "password"} error={sp.error} next={sp.next} showMicrosoft={microsoftConfigured() || process.env.NODE_ENV !== "production"} />
       <p className="mt-6 text-xs text-muted">
-        Volunteer? <Link href="/login" className="underline">Volunteer sign-in</Link>
+        <Link href="/login" className="underline">Volunteer sign-in</Link>
       </p>
     </>
   );

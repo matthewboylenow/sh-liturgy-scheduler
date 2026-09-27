@@ -17,7 +17,7 @@ export default async function ProfilePage({ searchParams }: { searchParams: Prom
 
   return (
     <>
-      <PageTitle title="Your profile" subtitle="How we reach you and how you sign in." />
+      <PageTitle title="Profile" />
       {sp.error && (
         <div className="mb-4">
           <Alert kind="error">{sp.error}</Alert>
@@ -31,8 +31,8 @@ export default async function ProfilePage({ searchParams }: { searchParams: Prom
 
       {sp.verify && (
         <div className="card mb-4 border-navy/30 p-4">
-          <h2 className="mb-1 text-lg">Confirm your new contact</h2>
-          <p className="mb-3 text-sm text-muted">We sent a code to {sp.verify.startsWith("+") ? formatPhone(sp.verify) : sp.verify}.</p>
+          <h2 className="mb-1 text-lg">Enter the code</h2>
+          <p className="mb-3 text-sm text-muted">Sent to {sp.verify.startsWith("+") ? formatPhone(sp.verify) : sp.verify}.</p>
           <form action={confirmContactChange} className="flex gap-2">
             <input type="hidden" name="dest" value={sp.verify} />
             <input name="code" className="input max-w-[10rem] text-center tracking-widest" inputMode="numeric" maxLength={6} required autoFocus />
@@ -47,7 +47,7 @@ export default async function ProfilePage({ searchParams }: { searchParams: Prom
           <div>
             <label className="label">Name</label>
             <div className="text-sm">
-              {user.firstName} {user.lastName} <span className="text-xs text-muted">(ask the office to change)</span>
+              {user.firstName} {user.lastName} <span className="text-xs text-muted">(the parish office can change this)</span>
             </div>
           </div>
           <div>
@@ -61,7 +61,7 @@ export default async function ProfilePage({ searchParams }: { searchParams: Prom
           </div>
           <fieldset className="space-y-2 text-sm">
             <label className="flex items-center gap-2">
-              <input type="checkbox" name="notifySms" defaultChecked={user.notifySms} /> Text reminders and open-slot notices
+              <input type="checkbox" name="notifySms" defaultChecked={user.notifySms} /> Text reminders
             </label>
             <label className="flex items-center gap-2">
               <input type="checkbox" name="notifyEmail" defaultChecked={user.notifyEmail} /> Email reminders and open-slot notices
@@ -73,7 +73,6 @@ export default async function ProfilePage({ searchParams }: { searchParams: Prom
         <div className="space-y-4">
           <form action={changePassword} className="card space-y-3 p-4">
             <h2 className="text-lg">{user.passwordHash ? "Change password" : "Add a password"}</h2>
-            <p className="text-xs text-muted">Optional. You can always sign in with a texted code.</p>
             {user.passwordHash && (
               <div>
                 <label className="label">Current password</label>
@@ -95,9 +94,9 @@ export default async function ProfilePage({ searchParams }: { searchParams: Prom
             <h2 className="text-lg">Two-step sign-in</h2>
             <label className="flex items-center gap-2 text-sm">
               <input type="checkbox" name="mfa" defaultChecked={user.mfaRequired || user.role !== "volunteer"} disabled={user.role !== "volunteer"} />
-              Ask for a texted code after my password
+              Ask for a code after my password
             </label>
-            {user.role !== "volunteer" && <p className="text-xs text-muted">Always on for staff and coordinators.</p>}
+            {user.role !== "volunteer" && <p className="text-xs text-muted">Always on for staff.</p>}
             {user.role === "volunteer" && <SubmitButton className="btn-ghost">Save</SubmitButton>}
           </form>
         </div>

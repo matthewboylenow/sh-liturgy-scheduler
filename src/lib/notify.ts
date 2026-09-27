@@ -109,6 +109,6 @@ export function emailShell(title: string, bodyHtml: string): string {
     <h1 style="font-size:20px;margin:0 0 12px;font-family:Georgia,serif">${title}</h1>
     ${bodyHtml}
   </div>
-  <p style="color:#777;font-size:12px;margin-top:16px">You are receiving this because you serve in a liturgical ministry at ${parish}. Manage notification settings in the portal.</p>
+  <p style="color:#777;font-size:12px;margin-top:16px">Sent to people who serve in a liturgical ministry at ${parish}. Change reminders in your profile.</p>
 </div></body></html>`;
 }

@@ -163,7 +163,7 @@ export async function issueOtp(opts: {
     .select({ id: otpCodes.id })
     .from(otpCodes)
     .where(and(eq(otpCodes.destination, opts.destination), gt(otpCodes.createdAt, new Date(Date.now() - 15 * 60_000))));
-  if (recent.length >= 5) return { ok: false, error: "Too many codes requested. Wait a few minutes and try again." };
+  if (recent.length >= 5) return { ok: false, error: "Too many codes. Wait a few minutes." };
 
   const code = String(randomInt(0, 1_000_000)).padStart(6, "0");
   await db.insert(otpCodes).values({
@@ -185,7 +185,7 @@ export async function issueOtp(opts: {
   return sendEmail(
     opts.destination,
     `Your ${parish} Liturgy code: ${code}`,
-    emailShell("Your sign-in code", `<p style="font-size:28px;letter-spacing:6px;font-weight:bold">${code}</p><p>This code expires in ${OTP_MINUTES} minutes. If you did not request it, you can ignore this email.</p>`),
+    emailShell("Your sign-in code", `<p style="font-size:28px;letter-spacing:6px;font-weight:bold">${code}</p><p>Expires in ${OTP_MINUTES} minutes. If you did not ask for a code, ignore this email.</p>`),
     { userId: opts.userId, kind: "otp" },
     `Your code is ${code}. It expires in ${OTP_MINUTES} minutes.`,
   );
@@ -198,11 +198,11 @@ export async function verifyOtp(destination: string, purpose: OtpPurpose, code: 
     .where(and(eq(otpCodes.destination, destination), eq(otpCodes.purpose, purpose), isNull(otpCodes.consumedAt), gt(otpCodes.expiresAt, new Date())))
     .orderBy(otpCodes.createdAt);
   const latest = rows.at(-1);
-  if (!latest) return { ok: false, userId: null, error: "That code has expired. Request a new one." };
-  if (latest.attempts >= OTP_MAX_ATTEMPTS) return { ok: false, userId: null, error: "Too many attempts. Request a new code." };
+  if (!latest) return { ok: false, userId: null, error: "That code expired. Send a new one." };
+  if (latest.attempts >= OTP_MAX_ATTEMPTS) return { ok: false, userId: null, error: "Too many tries. Send a new code." };
   if (latest.codeHash !== sha256(code.replace(/\D/g, ""))) {
     await db.update(otpCodes).set({ attempts: latest.attempts + 1 }).where(eq(otpCodes.id, latest.id));
-    return { ok: false, userId: null, error: "That code is not right. Check it and try again." };
+    return { ok: false, userId: null, error: "That code is not right." };
   }
   await db.update(otpCodes).set({ consumedAt: new Date() }).where(eq(otpCodes.id, latest.id));
   return { ok: true, userId: latest.userId };
@@ -235,7 +235,7 @@ export async function sendInvite(user: User, token: string, invitedBy?: string) 
   const parish = env.parishName();
   const results: string[] = [];
   if (user.phone) {
-    const r = await sendSms(user.phone, `${parish} Liturgy: ${invitedBy ?? "the parish"} set up your ministry sign-up account. Finish setup here: ${url}`, {
+    const r = await sendSms(user.phone, `${parish} Liturgy: ${invitedBy ?? "the parish office"} set up your account for Mass ministry sign-ups. Finish here: ${url}`, {
       userId: user.id,
       kind: "invite",
     });
@@ -244,15 +244,15 @@ export async function sendInvite(user: User, token: string, invitedBy?: string) 
   if (user.email) {
     const r = await sendEmail(
       user.email,
-      `Set up your ${parish} ministry sign-up account`,
+      `Your ${parish} ministry sign-up account`,
       emailShell(
         `Welcome, ${user.firstName}`,
-        `<p>${invitedBy ?? "The parish"} set up an account for you in the new liturgical ministry sign-up portal. This replaces SignUpGenius.</p>
-         <p><a href="${url}" style="display:inline-block;background:#CD5334;color:#fff;padding:12px 18px;border-radius:6px;text-decoration:none">Finish setting up</a></p>
-         <p style="color:#666;font-size:13px">Or paste this link into your browser:<br>${url}</p>`,
+        `<p>${invitedBy ?? "The parish office"} set up your account for Mass ministry sign-ups. It replaces SignUpGenius.</p>
+         <p><a href="${url}" style="display:inline-block;background:#CD5334;color:#fff;padding:12px 18px;border-radius:6px;text-decoration:none">Finish setup</a></p>
+         <p style="color:#666;font-size:13px">Or open this link:<br>${url}</p>`,
       ),
       { userId: user.id, kind: "invite" },
-      `Finish setting up your account: ${url}`,
+      `Finish setup: ${url}`,
     );
     if (r.ok) results.push("email");
   }

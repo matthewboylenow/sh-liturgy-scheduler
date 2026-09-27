@@ -19,14 +19,14 @@ export default async function KiosksPage({ searchParams }: { searchParams: Promi
 
   return (
     <>
-      <PageTitle title="Check-in kiosks" subtitle="The sacristy touchscreen. Each device gets its own key so it can show today's roster and take check-ins without a login." />
+      <PageTitle title="Kiosks" subtitle="One key per sacristy screen. A keyed screen shows today's roster and takes check-ins without a login." />
       <Flash sp={sp} />
       {sp.newKey && (
         <div className="mb-4">
           <Alert kind="success">
-            <p className="mb-1 font-semibold">Kiosk &quot;{sp.name}&quot; created. This link is shown once. Open it on the device and it will remember itself:</p>
+            <p className="mb-1 font-semibold">Open this link once on the device. It is shown only now.</p>
             <code className="block break-all rounded bg-white p-2 text-xs">{`${base}/kiosk?key=${sp.newKey}`}</code>
-            <p className="mt-1 text-xs">On a Raspberry Pi, set Chromium to open that URL in kiosk mode at boot. The key is saved in a cookie for a year.</p>
+            <p className="mt-1 text-xs">The key is stored in a cookie for a year. Set Chromium to open the kiosk URL at boot.</p>
           </Alert>
         </div>
       )}
@@ -55,7 +55,7 @@ export default async function KiosksPage({ searchParams }: { searchParams: Promi
                       </form>
                       <form action={deleteKiosk}>
                         <input type="hidden" name="id" value={k.id} />
-                        <ConfirmButton className="btn-danger px-2 py-1 text-xs" message="Remove this kiosk? The device will stop working until you set it up again.">
+                        <ConfirmButton className="btn-danger px-2 py-1 text-xs" message="Remove this kiosk? The screen will stop working until it is keyed again.">
                           Remove
                         </ConfirmButton>
                       </form>
@@ -75,7 +75,7 @@ export default async function KiosksPage({ searchParams }: { searchParams: Promi
         </div>
         <form action={createKiosk} className="card space-y-3 p-4 self-start">
           <h2 className="text-lg">Add a kiosk</h2>
-          <input name="name" className="input" placeholder="Sacristy touchscreen" />
+          <input name="name" className="input" placeholder="Name" aria-label="Kiosk name" />
           <SubmitButton>Create key</SubmitButton>
         </form>
       </div>

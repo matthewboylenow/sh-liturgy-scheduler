@@ -14,7 +14,7 @@ export default async function ImportPage({ searchParams }: { searchParams: Promi
   const mins = await db.select({ shortName: ministries.shortName }).from(ministries);
   return (
     <>
-      <PageTitle title="Import people from CSV" subtitle="Export your SignUpGenius or TouchPoint roster, tidy the columns, paste it here." />
+      <PageTitle title="Import people" subtitle="Paste a CSV exported from SignUpGenius or TouchPoint." />
       <Flash sp={sp} />
       {sp.problems && (
         <div className="mb-4">
@@ -25,8 +25,8 @@ export default async function ImportPage({ searchParams }: { searchParams: Promi
       )}
       <form action={importPeople} className="card space-y-3 p-4">
         <p className="text-sm text-muted">
-          Columns, in order: <code>first, last, phone, email, ministries</code>. Separate multiple ministries with a semicolon using short names:{" "}
-          {mins.map((m) => m.shortName).join(", ") || "(add ministries first)"}. People who already exist (same phone or email) are not duplicated; their ministries are added.
+          Columns in order: <code>first, last, phone, email, ministries</code>. Ministries are short names separated by semicolons:{" "}
+          {mins.map((m) => m.shortName).join(", ") || "(add ministries first)"}. A row that matches an existing phone or email adds ministries to that person instead of creating a duplicate.
         </p>
         <textarea
           name="csv"
@@ -35,9 +35,9 @@ export default async function ImportPage({ searchParams }: { searchParams: Promi
           placeholder={"first,last,phone,email,ministries\nMary,Smith,(908) 555-0101,mary@example.com,EM;Lector\nJohn,Doe,,john@example.com,Server"}
         />
         <label className="flex items-center gap-2 text-sm">
-          <input type="checkbox" name="sendInvite" /> Send invites to everyone new right away
+          <input type="checkbox" name="sendInvite" /> Invite new people now
         </label>
-        <SubmitButton pendingText="Importing...">Import</SubmitButton>
+        <SubmitButton pendingText="Importing">Import</SubmitButton>
       </form>
     </>
   );

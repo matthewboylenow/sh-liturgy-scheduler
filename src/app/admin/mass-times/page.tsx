@@ -23,7 +23,7 @@ export default async function MassTimesPage({ searchParams }: { searchParams: Pr
 
   return (
     <>
-      <PageTitle title="Mass times and positions" subtitle="The weekly pattern. Generating a schedule creates one Mass per date per row here, with these position counts." />
+      <PageTitle title="Mass times" subtitle="The weekly pattern and how many of each ministry every Mass needs." />
       <Flash sp={sp} />
 
       <div className="grid gap-4 lg:grid-cols-3">
@@ -75,7 +75,7 @@ export default async function MassTimesPage({ searchParams }: { searchParams: Pr
                 {times.length === 0 && (
                   <tr>
                     <td colSpan={mins.length + 2} className="py-6 text-center text-muted">
-                      No Mass times yet. Add them on the right.
+                      No Mass times yet.
                     </td>
                   </tr>
                 )}
@@ -111,7 +111,7 @@ export default async function MassTimesPage({ searchParams }: { searchParams: Pr
             </div>
             <div>
               <label className="label">Label (optional)</label>
-              <input name="label" className="input" defaultValue={editing?.label} placeholder="Sunday 10:30 AM" />
+              <input name="label" className="input" defaultValue={editing?.label} />
             </div>
             <div>
               <label className="label">Location</label>
@@ -129,7 +129,7 @@ export default async function MassTimesPage({ searchParams }: { searchParams: Pr
           {editing && (
             <form action={toggleMassTime} className="card p-4">
               <input type="hidden" name="id" value={editing.id} />
-              <p className="mb-2 text-xs text-muted">Inactive Mass times are skipped when generating. Existing Masses are untouched.</p>
+              <p className="mb-2 text-xs text-muted">Inactive Mass times are skipped when generating. Existing Masses stay.</p>
               <button className="btn-ghost">{editing.active ? "Mark inactive" : "Mark active"}</button>
             </form>
           )}

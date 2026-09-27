@@ -54,7 +54,7 @@ export default async function LiturgyAdminPage({ params, searchParams }: { param
 
       <div className="grid gap-4 lg:grid-cols-3">
         <div className="space-y-4 lg:col-span-2">
-          {groups.length === 0 && <p className="card p-4 text-sm text-muted">No positions yet. Add some on the right.</p>}
+          {groups.length === 0 && <p className="card p-4 text-sm text-muted">No positions yet.</p>}
           {groups.map((g) => {
             const can = canManageMinistry(user, g.ministry.id);
             const members = memberLists.get(g.ministry.id) ?? [];
@@ -117,7 +117,7 @@ export default async function LiturgyAdminPage({ params, searchParams }: { param
                                   <input type="hidden" name="positionId" value={p.id} />
                                   <select name="userId" className="input max-w-[14rem] py-1 text-xs" required defaultValue="">
                                     <option value="" disabled>
-                                      Assign someone...
+                                      Assign
                                     </option>
                                     {members
                                       .filter((m) => m.status !== "inactive")
@@ -128,7 +128,7 @@ export default async function LiturgyAdminPage({ params, searchParams }: { param
                                         </option>
                                       ))}
                                   </select>
-                                  <SubmitButton className="btn-primary px-2 py-1 text-xs" pendingText="...">
+                                  <SubmitButton className="btn-primary px-2 py-1 text-xs">
                                     Assign
                                   </SubmitButton>
                                 </form>
@@ -198,7 +198,7 @@ export default async function LiturgyAdminPage({ params, searchParams }: { param
               </div>
               <div>
                 <label className="label">Notes to volunteers</label>
-                <textarea name="notes" defaultValue={l.notes ?? ""} className="input" rows={2} placeholder="Incense today. Servers arrive 20 minutes early." />
+                <textarea name="notes" defaultValue={l.notes ?? ""} className="input" rows={2} />
               </div>
               <div>
                 <label className="label">Status</label>
@@ -215,8 +215,8 @@ export default async function LiturgyAdminPage({ params, searchParams }: { param
           {admin && (
             <form action={deleteLiturgy} className="card p-4">
               <input type="hidden" name="id" value={id} />
-              <p className="mb-2 text-xs text-muted">Deleting removes all positions and sign-ups for this Mass. Prefer Cancelled if people were already assigned.</p>
-              <ConfirmButton message="Delete this Mass and all of its sign-ups? This cannot be undone.">Delete Mass</ConfirmButton>
+              <p className="mb-2 text-xs text-muted">Removes the Mass and every sign-up on it. If people are already assigned, cancel it instead.</p>
+              <ConfirmButton message="Delete this Mass and all of its sign-ups?">Delete Mass</ConfirmButton>
             </form>
           )}
         </div>

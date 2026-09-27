@@ -17,7 +17,7 @@ export async function POST(req: NextRequest) {
 
   if (undo) {
     // Only allow undo within 5 minutes, from the kiosk
-    if (!a.checkedInAt || Date.now() - a.checkedInAt.getTime() > 5 * 60_000) return NextResponse.json({ error: "Too late to undo here." }, { status: 400 });
+    if (!a.checkedInAt || Date.now() - a.checkedInAt.getTime() > 5 * 60_000) return NextResponse.json({ error: "Too late to undo from the kiosk. Staff can undo it." }, { status: 400 });
     await db.update(assignments).set({ checkedInAt: null, checkedInVia: null }).where(eq(assignments.id, assignmentId));
   } else {
     await db.update(assignments).set({ checkedInAt: new Date(), checkedInVia: `kiosk:${k.id}`, status: "confirmed", updatedAt: new Date() }).where(eq(assignments.id, assignmentId));

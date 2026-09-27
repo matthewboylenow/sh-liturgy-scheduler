@@ -15,7 +15,7 @@ export default async function MinePage({ searchParams }: { searchParams: Promise
 
   return (
     <>
-      <PageTitle title="My schedule" subtitle="Everything you are signed up for. Drop or ask for a sub as early as you can." />
+      <PageTitle title="My schedule" subtitle="If you cannot make it, drop or ask for a sub early." />
       {sp.error && (
         <div className="mb-4">
           <Alert kind="error">{sp.error}</Alert>
@@ -24,7 +24,7 @@ export default async function MinePage({ searchParams }: { searchParams: Promise
       {sp.ok && (
         <div className="mb-4">
           <Alert kind="success">
-            {sp.ok === "drop" ? "You have been removed. The slot is open again." : sp.ok === "request_sub" ? "Marked as needing a sub. Your ministry has been notified if it is coming up soon." : "Saved."}
+            {sp.ok === "drop" ? "Dropped. The slot is open again." : sp.ok === "request_sub" ? "Marked as needing a sub. Your ministry has been told." : "Saved."}
           </Alert>
         </div>
       )}
@@ -43,7 +43,7 @@ export default async function MinePage({ searchParams }: { searchParams: Promise
             {upcoming.length === 0 && (
               <tr>
                 <td colSpan={4} className="py-6 text-center text-muted">
-                  Nothing upcoming.{" "}
+                  Nothing scheduled.{" "}
                   <Link href="/app/schedule" className="text-rust underline">
                     Sign up
                   </Link>
@@ -83,7 +83,7 @@ export default async function MinePage({ searchParams }: { searchParams: Promise
                     <form action={updateAssignment}>
                       <input type="hidden" name="assignmentId" value={r.assignment.id} />
                       <input type="hidden" name="action" value="drop" />
-                      <ConfirmButton className="btn-danger px-2 py-1 text-xs" message="Drop this slot? It will open up for someone else.">
+                      <ConfirmButton className="btn-danger px-2 py-1 text-xs" message="Drop this slot?">
                         Drop
                       </ConfirmButton>
                     </form>

@@ -24,7 +24,7 @@ export function KioskBoard({ kioskName, parish }: { kioskName: string; parish: s
   const load = useCallback(async () => {
     try {
       const r = await fetch("/api/kiosk/today", { cache: "no-store" });
-      if (!r.ok) throw new Error(r.status === 401 ? "This kiosk is no longer authorized." : "Could not load today's schedule.");
+      if (!r.ok) throw new Error(r.status === 401 ? "This screen is no longer authorized." : "Could not load today's schedule.");
       setData(await r.json());
       setError(null);
     } catch (e) {
@@ -63,8 +63,8 @@ export function KioskBoard({ kioskName, parish }: { kioskName: string; parish: s
     if (!slot.assignmentId) return;
     setConfirm(null);
     const r = await fetch("/api/kiosk/checkin", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ assignmentId: slot.assignmentId }) });
-    if (r.ok) setToast({ text: `${slot.name} checked in. Thank you!`, undo: slot.assignmentId });
-    else setToast({ text: (await r.json()).error ?? "Something went wrong." });
+    if (r.ok) setToast({ text: `${slot.name} checked in.`, undo: slot.assignmentId });
+    else setToast({ text: (await r.json()).error ?? "That did not go through." });
     load();
   }
   async function undo(assignmentId: string) {
@@ -82,7 +82,7 @@ export function KioskBoard({ kioskName, parish }: { kioskName: string; parish: s
     if (!fill) return;
     const r = await fetch("/api/kiosk/fill", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ positionId: fill.slot.positionId, userId }) });
     setFill(null);
-    if (r.ok) setToast({ text: `${name} is filling in. Checked in.` });
+    if (r.ok) setToast({ text: `${name} checked in as a fill-in.` });
     else setToast({ text: (await r.json()).error ?? "Could not fill that slot." });
     load();
   }
@@ -118,8 +118,8 @@ export function KioskBoard({ kioskName, parish }: { kioskName: string; parish: s
       {data && data.masses.length === 0 && (
         <div className="flex flex-1 items-center justify-center p-10 text-center">
           <div>
-            <div className="font-serif text-3xl">No Masses on the schedule today</div>
-            <p className="mt-2 text-white/60">Published Masses for today will show here automatically.</p>
+            <div className="font-serif text-3xl">No Masses today</div>
+            <p className="mt-2 text-white/60">Today&apos;s published Masses appear here.</p>
           </div>
         </div>
       )}
@@ -185,7 +185,7 @@ export function KioskBoard({ kioskName, parish }: { kioskName: string; parish: s
                             <span>
                               {s.label && <span className={`mr-2 text-xs ${here ? "text-white/70" : "text-navy/50"}`}>{s.label}</span>}
                               {s.name ?? "Open. Tap to fill in"}
-                              {s.status === "sub_requested" && s.name && <span className="ml-2 text-sm">(needs a sub, tap to cover)</span>}
+                              {s.status === "sub_requested" && s.name && <span className="ml-2 text-sm">(needs a sub. Tap to cover)</span>}
                             </span>
                             <span className="text-sm">{here ? "✓ Here" : open ? "" : "Tap to check in"}</span>
                           </button>
@@ -225,7 +225,7 @@ export function KioskBoard({ kioskName, parish }: { kioskName: string; parish: s
             <div className="font-serif text-2xl text-navy">Who is covering this slot?</div>
           </div>
           {members.length === 0 ? (
-            <p className="py-6 text-center text-navy/60">Loading names...</p>
+            <p className="py-6 text-center text-navy/60">Loading</p>
           ) : (
             <div className="grid max-h-[50vh] grid-cols-2 gap-2 overflow-y-auto sm:grid-cols-3">
               {members.map((m) => (

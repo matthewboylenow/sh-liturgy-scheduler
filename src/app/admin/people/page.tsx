@@ -59,7 +59,7 @@ export default async function PeoplePage({ searchParams }: { searchParams: Promi
       <div className="grid gap-4 lg:grid-cols-3">
         <div className="lg:col-span-2">
           <form className="mb-3 flex flex-wrap gap-2" method="get">
-            <input name="q" defaultValue={q} className="input max-w-xs" placeholder="Search name, phone, email" />
+            <input name="q" defaultValue={q} className="input max-w-xs" placeholder="Search" aria-label="Search by name, phone, or email" />
             <select name="ministry" defaultValue={filterMin ?? ""} className="input max-w-[14rem]">
               <option value="">All ministries</option>
               {allMinistries.map((m) => (
@@ -127,11 +127,11 @@ export default async function PeoplePage({ searchParams }: { searchParams: Promi
         <form action={createPerson} className="card space-y-3 p-4 self-start">
           <h2 className="text-lg">Add a person</h2>
           <div className="grid grid-cols-2 gap-2">
-            <input name="firstName" className="input" placeholder="First name" required />
-            <input name="lastName" className="input" placeholder="Last name" required />
+            <input name="firstName" className="input" placeholder="First name" aria-label="First name" required />
+            <input name="lastName" className="input" placeholder="Last name" aria-label="Last name" required />
           </div>
-          <input name="phone" className="input" placeholder="Mobile (908) 555-0123" inputMode="tel" />
-          <input name="email" className="input" placeholder="Email" type="email" />
+          <input name="phone" className="input" placeholder="Mobile" aria-label="Mobile number" inputMode="tel" />
+          <input name="email" className="input" placeholder="Email" aria-label="Email" type="email" />
           {admin && (
             <select name="role" className="input" defaultValue="volunteer">
               <option value="volunteer">Volunteer</option>
@@ -150,9 +150,9 @@ export default async function PeoplePage({ searchParams }: { searchParams: Promi
             </div>
           </fieldset>
           <label className="flex items-center gap-2 text-sm">
-            <input type="checkbox" name="sendInvite" defaultChecked /> Send invite now (text and email)
+            <input type="checkbox" name="sendInvite" defaultChecked /> Send the invite now
           </label>
-          <SubmitButton pendingText="Adding...">Add person</SubmitButton>
+          <SubmitButton pendingText="Adding">Add</SubmitButton>
         </form>
       </div>
     </>
