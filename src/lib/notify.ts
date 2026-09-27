@@ -79,7 +79,7 @@ export async function sendEmail(
     }
   } else {
     try {
-      const res = await client.emails.send({ from: r.from, to, subject, html, text });
+      const res = await client.emails.send({ from: r.from, to, subject, html, text, replyTo: r.replyTo });
       if (res.error) error = res.error.message;
       providerId = res.data?.id;
     } catch (e) {
