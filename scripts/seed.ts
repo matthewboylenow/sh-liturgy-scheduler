@@ -17,7 +17,7 @@ const MINISTRIES = [
   { name: "Lectors", shortName: "Lector", slug: "lector", color: "#0F766E", sortOrder: 30 },
   { name: "Extraordinary Ministers of Holy Communion", shortName: "EM", slug: "em", color: "#CD5334", sortOrder: 40 },
   { name: "Altar Servers", shortName: "Server", slug: "server", color: "#B45309", sortOrder: 50 },
-  { name: "Ushers and Greeters", shortName: "Usher", slug: "usher", color: "#4D7C0F", sortOrder: 60 },
+  { name: "Hospitality Ministry", shortName: "Hospitality", slug: "hospitality", color: "#4D7C0F", sortOrder: 60 },
   { name: "Music Ministry", shortName: "Music", slug: "music", color: "#BE185D", sortOrder: 70, description: "Cantors and instrumentalists" },
   { name: "Media Ministry", shortName: "Media", slug: "media", color: "#0369A1", sortOrder: 80, description: "Livestream, slides, and sound" },
 ];
@@ -32,7 +32,7 @@ const MASS_TIMES = [
 ];
 
 // Default positions per Mass, by ministry slug
-const TEMPLATE: Record<string, number> = { presider: 1, sacristan: 1, lector: 2, em: 4, server: 3, usher: 4, music: 2, media: 1 };
+const TEMPLATE: Record<string, number> = { presider: 1, sacristan: 1, lector: 2, em: 4, server: 3, hospitality: 4, music: 2, media: 1 };
 
 // Clergy who appear on the presider schedule. Inactive: assignable by staff, never sign in.
 const CLERGY = [{ firstName: "Fr. Tom", lastName: "Nydegger", initials: "TPN", notes: "Pastor" }];

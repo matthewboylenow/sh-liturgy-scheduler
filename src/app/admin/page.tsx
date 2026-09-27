@@ -5,7 +5,7 @@ import { db } from "@/db";
 import { users, assignments, positions, liturgies } from "@/db/schema";
 import { getLiturgies, coverage, liveAssignment } from "@/lib/schedule";
 import { addDaysLocal, fmtDate, fmtTime, todayLocal } from "@/lib/time";
-import { PageTitle, MinistryPill, StatusPill } from "@/components/shell";
+import { PageTitle, MinistryPill } from "@/components/shell";
 import { Flash } from "@/components/flash";
 
 export default async function AdminHome({ searchParams }: { searchParams: Promise<Record<string, string | undefined>> }) {
@@ -30,6 +30,7 @@ export default async function AdminHome({ searchParams }: { searchParams: Promis
   const openSoon = upcoming.flatMap((l) =>
     l.positions.filter((p) => scope(p.ministryId) && !liveAssignment(p)).map((p) => ({ l, p })),
   );
+  const mySubs = subs.filter((s) => scope(s.p.ministryId));
 
   return (
     <>
@@ -37,9 +38,9 @@ export default async function AdminHome({ searchParams }: { searchParams: Promis
       <Flash sp={sp} />
       {sp.denied && <p className="mb-4 text-sm text-rust">That page is for admins.</p>}
 
-      <div className="mb-6 grid gap-3 sm:grid-cols-4">
+      <div className="mb-6 grid grid-cols-2 gap-3 sm:grid-cols-4">
         <Stat label="Open slots, next 3 weeks" value={openSoon.length} tone={openSoon.length ? "rust" : "ok"} />
-        <Stat label="Sub requests" value={subs.filter((s) => scope(s.p.ministryId)).length} tone={subs.length ? "gold" : "ok"} />
+        <Stat label="Sub requests" value={mySubs.length} tone={mySubs.length ? "gold" : "ok"} />
         <Stat label="Unpublished drafts" value={drafts[0]?.n ?? 0} href="/admin/schedule?status=draft" />
         <Stat label="Invites not yet accepted" value={invited[0]?.n ?? 0} href="/admin/people?status=invited" />
       </div>
@@ -70,48 +71,35 @@ export default async function AdminHome({ searchParams }: { searchParams: Promis
           </ul>
         </div>
 
-        <div className="space-y-4">
-          <div className="card">
-            <div className="border-b border-line px-4 py-2 font-semibold">Needs a sub</div>
-            <ul className="divide-y divide-line/70 text-sm">
-              {subs.filter((s) => scope(s.p.ministryId)).length === 0 && <li className="px-4 py-4 text-muted">None.</li>}
-              {subs
-                .filter((s) => scope(s.p.ministryId))
-                .map((s) => (
-                  <li key={s.a.id} className="flex items-center justify-between px-4 py-2">
-                    <span>
-                      {s.u.firstName} {s.u.lastName} · {fmtDate(s.l.date)} {fmtTime(s.l.time)}
-                    </span>
-                    <Link href={`/admin/schedule/${s.l.id}`} className="text-rust underline">
-                      Find a sub
-                    </Link>
-                  </li>
-                ))}
-            </ul>
-          </div>
-          <div className="card">
-            <div className="border-b border-line px-4 py-2 font-semibold">Open slots, soonest first</div>
-            <ul className="divide-y divide-line/70 text-sm">
-              {openSoon.length === 0 && <li className="px-4 py-4 text-muted">None.</li>}
-              {openSoon.slice(0, 12).map(({ l, p }) => (
-                <li key={p.id} className="flex items-center justify-between px-4 py-2">
-                  <span className="flex items-center gap-2">
-                    <MinistryPill ministry={p.ministry} />
-                    {fmtDate(l.date)} · {fmtTime(l.time)} {p.label && <span className="text-muted">{p.label}</span>}
-                  </span>
-                  <Link href={`/admin/schedule/${l.id}`} className="text-rust underline">
-                    Assign
-                  </Link>
-                </li>
-              ))}
-              {openSoon.length > 12 && <li className="px-4 py-2 text-xs text-muted">and {openSoon.length - 12} more</li>}
-            </ul>
-          </div>
+        <div className="card self-start">
+          <div className="border-b border-line px-4 py-2 font-semibold">Needs attention</div>
+          <ul className="divide-y divide-line/70 text-sm">
+            {mySubs.length === 0 && openSoon.length === 0 && <li className="px-4 py-4 text-muted">Nothing right now.</li>}
+            {mySubs.map((s) => (
+              <li key={s.a.id} className="flex items-center justify-between gap-2 px-4 py-2">
+                <span>
+                  {s.u.firstName} {s.u.lastName} needs a sub · {fmtDate(s.l.date)} {fmtTime(s.l.time)}
+                </span>
+                <Link href={`/admin/schedule/${s.l.id}`} className="whitespace-nowrap text-rust underline">
+                  Find a sub
+                </Link>
+              </li>
+            ))}
+            {openSoon.slice(0, 10).map(({ l, p }) => (
+              <li key={p.id} className="flex items-center justify-between gap-2 px-4 py-2">
+                <span className="flex items-center gap-2">
+                  <MinistryPill ministry={p.ministry} />
+                  {fmtDate(l.date)} · {fmtTime(l.time)}
+                </span>
+                <Link href={`/admin/schedule/${l.id}`} className="text-rust underline">
+                  Assign
+                </Link>
+              </li>
+            ))}
+            {openSoon.length > 10 && <li className="px-4 py-2 text-xs text-muted">and {openSoon.length - 10} more open slots</li>}
+          </ul>
         </div>
       </div>
-      <p className="mt-6 text-xs text-muted">
-        Signed in as {user.firstName} {user.lastName} · <StatusPill status={user.role} />
-      </p>
     </>
   );
 }

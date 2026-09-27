@@ -1,5 +1,6 @@
 import Link from "next/link";
 import Image from "next/image";
+import { NavLinks } from "@/components/nav-links";
 import type { SessionUser } from "@/lib/auth";
 import { env } from "@/lib/env";
 
@@ -18,48 +19,28 @@ export function Shell({
   return (
     <div className="flex min-h-full flex-1 flex-col">
       <header className="border-b border-line bg-white">
-        <div className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-4 py-3">
-          <Link href={area === "admin" ? "/admin" : "/app"} className="flex items-center gap-2">
-            <Image src="/brand/saint-helen-mark.png" alt="" width={32} height={32} className="h-8 w-8" />
-            <span className="font-serif text-lg text-navy">{env.parishName()} Liturgy</span>
-            {area === "admin" && <span className="pill bg-rust/10 text-rust">Admin</span>}
+        <div className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-4 pt-3">
+          <Link href={area === "admin" ? "/admin" : "/app"} className="flex items-center gap-2.5">
+            <Image src="/brand/saint-helen-mark.png" alt="" width={36} height={36} className="h-9 w-9" />
+            <span className="whitespace-nowrap font-serif text-lg text-navy sm:text-xl">{env.parishName()} Liturgy</span>
+            {area === "admin" && <span className="pill hidden bg-rust/10 text-rust sm:inline-flex">Admin</span>}
           </Link>
-          <nav className="hidden items-center gap-1 text-sm md:flex">
-            {nav.map((n) => (
-              <Link key={n.href} href={n.href} className="rounded px-3 py-1.5 text-ink hover:bg-cream">
-                {n.label}
-              </Link>
-            ))}
-          </nav>
-          <div className="flex items-center gap-3 text-sm">
-            {isStaff && area === "volunteer" && (
-              <Link href="/admin" className="hidden text-rust underline sm:inline">
-                Admin
-              </Link>
-            )}
-            {area === "admin" && (
-              <Link href="/app" className="hidden text-muted underline sm:inline">
-                Volunteer view
-              </Link>
-            )}
+          <div className="flex items-center gap-4 text-sm">
             <span className="hidden text-muted sm:inline">{user.firstName}</span>
             <form action="/api/auth/logout" method="post">
-              <button className="btn-ghost px-3 py-1">Sign out</button>
+              <button className="btn-ghost whitespace-nowrap px-3 py-1.5">Sign out</button>
             </form>
           </div>
         </div>
-        <nav className="flex gap-1 overflow-x-auto border-t border-line px-2 py-1 text-sm md:hidden">
-          {nav.map((n) => (
-            <Link key={n.href} href={n.href} className="whitespace-nowrap rounded px-3 py-1.5 hover:bg-cream">
-              {n.label}
-            </Link>
-          ))}
-          {isStaff && area === "volunteer" && (
-            <Link href="/admin" className="whitespace-nowrap rounded px-3 py-1.5 text-rust">
-              Admin
-            </Link>
-          )}
-        </nav>
+        <div className="mx-auto max-w-6xl px-4">
+          <NavLinks
+            items={[
+              ...nav,
+              ...(isStaff && area === "volunteer" ? [{ href: "/admin", label: "Admin", muted: true }] : []),
+              ...(area === "admin" ? [{ href: "/app", label: "Volunteer view", muted: true }] : []),
+            ]}
+          />
+        </div>
       </header>
       <main className="mx-auto w-full max-w-6xl flex-1 px-4 py-6">{children}</main>
       <footer className="px-4 py-4 text-center text-xs text-muted">Parish Community of {env.parishName()} · Westfield, NJ</footer>

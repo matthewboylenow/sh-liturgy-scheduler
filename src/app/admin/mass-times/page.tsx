@@ -6,9 +6,11 @@ import { PageTitle, MinistryPill } from "@/components/shell";
 import { Flash } from "@/components/flash";
 import { SubmitButton } from "@/components/ui";
 import { saveMassTime, saveTemplates, toggleMassTime } from "@/app/admin/actions";
-import { DAY_NAMES, fmtTime } from "@/lib/time";
+import { DAY_NAMES } from "@/lib/time";
 
 export const metadata = { title: "Mass times" };
+
+const COUNTS = Array.from({ length: 13 }, (_, i) => i);
 
 export default async function MassTimesPage({ searchParams }: { searchParams: Promise<Record<string, string | undefined>> }) {
   const sp = await searchParams;
@@ -23,11 +25,11 @@ export default async function MassTimesPage({ searchParams }: { searchParams: Pr
 
   return (
     <>
-      <PageTitle title="Mass times" subtitle="The weekly pattern and how many of each ministry every Mass needs." />
+      <PageTitle title="Mass times" subtitle="How many of each ministry every Mass needs." />
       <Flash sp={sp} />
 
-      <div className="grid gap-4 lg:grid-cols-3">
-        <div className="space-y-4 lg:col-span-2">
+      <div className="space-y-4">
+        <div>
           <form action={saveTemplates} className="card overflow-x-auto">
             <table className="table">
               <thead>
@@ -44,23 +46,24 @@ export default async function MassTimesPage({ searchParams }: { searchParams: Pr
               <tbody>
                 {times.map((t) => (
                   <tr key={t.id} className={t.active ? "" : "opacity-50"}>
-                    <td>
+                    <td className="whitespace-nowrap">
                       <div className="font-medium">{t.label}</div>
-                      <div className="text-xs text-muted">
-                        {DAY_NAMES[t.dayOfWeek]} {fmtTime(t.time)} · {t.location}
-                        {!t.active && " · inactive"}
-                      </div>
+                      {(t.location !== "Church" || !t.active) && (
+                        <div className="text-xs text-muted">
+                          {t.location !== "Church" && t.location}
+                          {!t.active && " inactive"}
+                        </div>
+                      )}
                     </td>
                     {mins.map((m) => (
-                      <td key={m.id} className="text-center">
-                        <input
-                          name={`count:${t.id}:${m.id}`}
-                          type="number"
-                          min={0}
-                          max={30}
-                          defaultValue={tmap.get(`${t.id}:${m.id}`) ?? 0}
-                          className="input w-14 px-1 text-center"
-                        />
+                      <td key={m.id} className="px-1 text-center">
+                        <select name={`count:${t.id}:${m.id}`} defaultValue={tmap.get(`${t.id}:${m.id}`) ?? 0} className="input min-w-16 w-16 px-1 py-1.5 text-center" aria-label={`${m.shortName} at ${t.label}`}>
+                          {COUNTS.map((n) => (
+                            <option key={n} value={n}>
+                              {n}
+                            </option>
+                          ))}
+                        </select>
                       </td>
                     ))}
                     <td>
@@ -89,7 +92,7 @@ export default async function MassTimesPage({ searchParams }: { searchParams: Pr
           </form>
         </div>
 
-        <div className="space-y-4">
+        <div className="grid gap-4 sm:grid-cols-2">
           <form action={saveMassTime} className="card space-y-3 p-4" key={editing?.id ?? "new"}>
             <h2 className="text-lg">{editing ? "Edit Mass time" : "Add a Mass time"}</h2>
             {editing && <input type="hidden" name="id" value={editing.id} />}

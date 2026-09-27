@@ -83,10 +83,11 @@ export default async function SchedulePage({ searchParams }: { searchParams: Pro
                         <Link href={`/admin/schedule/${l.id}`} className="whitespace-nowrap font-medium hover:underline">
                           {fmtDate(l.date)} · {fmtTime(l.time)}
                         </Link>
-                        <div className="text-xs text-muted">
-                          {l.title ? `${l.title} · ` : ""}
-                          {l.location}
-                        </div>
+                        {(l.title || l.location !== "Church") && (
+                          <div className="text-xs text-muted">
+                            {[l.title, l.location !== "Church" ? l.location : null].filter(Boolean).join(" · ")}
+                          </div>
+                        )}
                       </td>
                       <td>
                         <div className="flex items-center gap-2">
@@ -152,8 +153,9 @@ export default async function SchedulePage({ searchParams }: { searchParams: Pro
               <SubmitButton pendingText="Generating">Generate</SubmitButton>
             </form>
 
-            <form action={createOneLiturgy} className="card space-y-3 p-4">
-              <h2 className="text-lg">Add a single Mass</h2>
+            <details className="card p-4">
+              <summary className="cursor-pointer font-serif text-lg">Add a single Mass</summary>
+              <form action={createOneLiturgy} className="mt-3 space-y-3">
               <p className="text-xs text-muted">For holy days, Christmas, funerals. Positions are added on the next screen.</p>
               <div className="grid grid-cols-2 gap-2">
                 <input type="date" name="date" className="input" required />
@@ -162,7 +164,8 @@ export default async function SchedulePage({ searchParams }: { searchParams: Pro
               <input name="title" className="input" placeholder="Title" aria-label="Title" />
               <input name="location" className="input" placeholder="Location" defaultValue="Church" />
               <SubmitButton className="btn-ghost">Add Mass</SubmitButton>
-            </form>
+              </form>
+            </details>
           </div>
         )}
       </div>
