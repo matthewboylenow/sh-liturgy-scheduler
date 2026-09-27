@@ -61,7 +61,7 @@ Stopgap while waiting on 10DLC: set `DEV_OTP_ECHO=true` in Vercel, redeploy, sig
 
 1. resend.com → Domains → add `sainthelen.org` (or `mail.sainthelen.org` to keep DNS separate from HubSpot). Add the DKIM/SPF records it gives you at the DNS host.
 2. API Keys → create one with sending access.
-3. Vercel env: `RESEND_API_KEY`, `EMAIL_FROM="Saint Helen Liturgy <liturgy@sainthelen.org>"`. Redeploy.
+3. Vercel env: `RESEND_API_KEY`, `EMAIL_FROM="Saint Helen Liturgy <liturgy@sending.sainthelen.org>"`. Redeploy.
 
 Check: in the admin, add yourself as a second test person with a different email, tick "Send invite now". The invite email arrives and the link works.
 
