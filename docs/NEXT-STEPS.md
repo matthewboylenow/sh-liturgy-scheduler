@@ -28,7 +28,7 @@ Redeploy after adding (Deployments → ⋯ → Redeploy). Env changes do not app
 Done from a Claude Code session with the production `DATABASE_URL`:
 
 - `npm run db:migrate` applied `drizzle/0000_initial.sql` (14 tables, journal row 1). The script now goes through the app's own driver (`scripts/migrate.ts`), so it works over Neon HTTP from networks where port 5432 is blocked. `npm run db:migrate:kit` is the old drizzle-kit path if you ever need it.
-- `npm run seed` created the 9 ministries, 6 Mass times (Sat 5, Sun 7:30 / 9 / 10:30 / 12 / 5) with default position counts, and the admin account `matthew@sainthelen.org` (Matthew Boyle, role admin, active).
+- `npm run seed` created the 9 ministries, the weekend Mass times (Sat 5, Sun 8 / 10 / 12 / 6) with default position counts, and the admin account `matthew@sainthelen.org` (Matthew Boyle, role admin, active).
 - The admin account is `mboyle@sainthelen.org` with the password Matthew chose (set Sept 27, bcrypt). No phone yet, so the code after the password goes by email until a mobile number is added in Profile.
 - A staff sign-in by email code was exercised end to end against this database (with `DEV_OTP_ECHO=true`) and works. Two `otp_codes`, two `audit_log`, and two `notification_log` rows from that test remain; harmless.
 

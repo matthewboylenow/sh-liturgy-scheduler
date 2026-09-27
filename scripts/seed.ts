@@ -22,14 +22,13 @@ const MINISTRIES = [
   { name: "Media Ministry", shortName: "Media", slug: "media", color: "#0369A1", sortOrder: 80, description: "Livestream, slides, and sound" },
 ];
 
-// Saturday = 6, Sunday = 0. Adjust to the actual weekend schedule.
+// Saturday = 6, Sunday = 0. The weekend pattern at Saint Helen (weekday and Saturday 9 am Masses are not scheduled here).
 const MASS_TIMES = [
   { label: "Saturday 5:00 PM", dayOfWeek: 6, time: "17:00", sortOrder: 10 },
-  { label: "Sunday 7:30 AM", dayOfWeek: 0, time: "07:30", sortOrder: 20 },
-  { label: "Sunday 9:00 AM", dayOfWeek: 0, time: "09:00", sortOrder: 30 },
-  { label: "Sunday 10:30 AM", dayOfWeek: 0, time: "10:30", sortOrder: 40 },
-  { label: "Sunday 12:00 PM", dayOfWeek: 0, time: "12:00", sortOrder: 50 },
-  { label: "Sunday 5:00 PM", dayOfWeek: 0, time: "17:00", sortOrder: 60 },
+  { label: "Sunday 8:00 AM", dayOfWeek: 0, time: "08:00", sortOrder: 20 },
+  { label: "Sunday 10:00 AM", dayOfWeek: 0, time: "10:00", sortOrder: 30 },
+  { label: "Sunday 12:00 PM", dayOfWeek: 0, time: "12:00", sortOrder: 40 },
+  { label: "Sunday 6:00 PM", dayOfWeek: 0, time: "18:00", sortOrder: 50 },
 ];
 
 // Default positions per Mass, by ministry slug
