@@ -66,6 +66,9 @@ export default async function MinePage({ searchParams }: { searchParams: Promise
                 </td>
                 <td>
                   <div className="flex justify-end gap-1">
+                    <a href={`/app/liturgy/${r.liturgy.id}/ics`} className="btn-ghost px-2 py-1 text-xs" title="Add to calendar">
+                      .ics
+                    </a>
                     {r.assignment.status === "signed_up" && (
                       <form action={updateAssignment}>
                         <input type="hidden" name="assignmentId" value={r.assignment.id} />

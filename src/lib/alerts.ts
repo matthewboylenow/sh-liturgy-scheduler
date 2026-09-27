@@ -145,3 +145,69 @@ export async function sendOpenSlotDigests(daysAhead = 10) {
   }
   return { people };
 }
+
+/**
+ * No-show alert. Runs every 15 minutes on weekends. For each published Mass whose alert moment
+ * (start plus or minus the configured offset) fell in the last 15 minutes, text or email the leads of
+ * each check-in ministry (admins when a ministry has no lead) the names not yet checked in.
+ * Sent at most once per Mass per recipient; the notification_log kind carries the Mass id.
+ */
+export async function sendNoShowAlerts(now = new Date(), windowMinutes = 15) {
+  const { getSettings } = await import("./settings");
+  const s = (await getSettings()).noShow;
+  if (!s.enabled || (!s.sms && !s.email)) return { masses: 0, sent: 0, skipped: "disabled" as const };
+  const offsetMs = (s.when === "before" ? -1 : 1) * s.offsetMinutes * 60_000;
+  // Masses whose alert moment is in (now - window, now]
+  const startLo = new Date(now.getTime() - windowMinutes * 60_000 - offsetMs);
+  const startHi = new Date(now.getTime() - offsetMs);
+  const list = await getLiturgies({ statuses: ["published"] });
+  const due = list.filter((l) => l.startsAt > startLo && l.startsAt <= startHi);
+  if (!due.length) return { masses: 0, sent: 0 };
+
+  const leads = await db
+    .select({ u: users, ministryId: ministryMembers.ministryId })
+    .from(ministryMembers)
+    .innerJoin(users, eq(users.id, ministryMembers.userId))
+    .where(eq(ministryMembers.isCoordinator, true));
+  const admins = await db.select().from(users).where(and(eq(users.role, "admin"), eq(users.status, "active")));
+
+  let sent = 0;
+  for (const l of due) {
+    const kind = `no_show:${l.id}`;
+    const already = new Set((await db.select({ d: notificationLog.destination }).from(notificationLog).where(eq(notificationLog.kind, kind))).map((r) => r.d));
+    // recipient -> lines
+    const perRecipient = new Map<string, { u: typeof users.$inferSelect; lines: string[] }>();
+    const byMinistry = new Map<string, string[]>();
+    for (const p of l.positions) {
+      if (!p.ministry.checkInEnabled) continue;
+      const a = liveAssignment(p);
+      if (!a || a.checkedInAt || a.status === "sub_requested") continue;
+      const arr = byMinistry.get(p.ministryId) ?? [];
+      arr.push(`${a.user.firstName} ${a.user.lastName} (${p.ministry.shortName})`);
+      byMinistry.set(p.ministryId, arr);
+    }
+    for (const [ministryId, names] of byMinistry) {
+      let recipients = leads.filter((r) => r.ministryId === ministryId && r.u.status === "active").map((r) => r.u);
+      if (!recipients.length) recipients = admins;
+      for (const u of recipients) {
+        if (!u.notifyNoShows) continue;
+        const e = perRecipient.get(u.id) ?? { u, lines: [] };
+        e.lines.push(...names);
+        perRecipient.set(u.id, e);
+      }
+    }
+    const label = `${fmtTime(l.time)} Mass${l.title ? ` (${l.title})` : ""}`;
+    for (const { u, lines } of perRecipient.values()) {
+      const text = `${env.parishName()} Liturgy, ${label}: not checked in yet: ${[...new Set(lines)].join(", ")}. ${env.appUrl()}/admin/schedule/${l.id}`;
+      if (s.sms && u.phone && !already.has(u.phone)) {
+        const r = await sendSms(u.phone, text, { userId: u.id, kind });
+        if (r.ok) sent++;
+      }
+      if (s.email && u.email && !already.has(u.email)) {
+        const r = await sendEmail(u.email, `Not checked in, ${label}`, emailShell("Not checked in yet", `<p>${label} on ${fmtDateLong(l.date)}.</p><ul>${[...new Set(lines)].map((n) => `<li>${n}</li>`).join("")}</ul><p><a href="${env.appUrl()}/admin/schedule/${l.id}">Open the Mass</a></p>`), { userId: u.id, kind }, text);
+        if (r.ok) sent++;
+      }
+    }
+  }
+  return { masses: due.length, sent };
+}

@@ -14,6 +14,7 @@
     "seed": "tsx scripts/seed.ts",
     "cron:reminders": "tsx scripts/run-cron.ts reminders",
     "cron:open-slots": "tsx scripts/run-cron.ts open-slots",
+    "cron:no-shows": "tsx scripts/run-cron.ts no-shows",
     "db:migrate:kit": "drizzle-kit migrate"
   },
   "dependencies": {

@@ -47,6 +47,8 @@ export const users = pgTable(
     emailVerified: boolean("email_verified").notNull().default(false),
     notifySms: boolean("notify_sms").notNull().default(true),
     notifyEmail: boolean("notify_email").notNull().default(true),
+    notifyNoShows: boolean("notify_no_shows").notNull().default(true), // leads and admins: the no-show alert per Mass
+    calendarToken: text("calendar_token"), // secret for /api/ical/<token>; regenerable
     entraOid: text("entra_oid"), // Microsoft Entra object id, staff only
     initials: text("initials"), // as printed on the presider schedule, e.g. TPN
     // Only super admins can grant or remove the admin role, or edit another admin. Set by hand, never from the UI.
@@ -63,6 +65,7 @@ export const users = pgTable(
     uniqueIndex("users_username_idx").on(t.username),
     uniqueIndex("users_entra_oid_idx").on(t.entraOid),
     uniqueIndex("users_initials_idx").on(t.initials),
+    uniqueIndex("users_calendar_token_idx").on(t.calendarToken),
   ],
 );
 
@@ -254,6 +257,25 @@ export const kiosks = pgTable("kiosks", {
   active: boolean("active").notNull().default(true),
   lastSeenAt: timestamp("last_seen_at", { withTimezone: true }),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+// ---------- Parish-wide settings ----------
+
+export type NoShowSettings = {
+  enabled: boolean;
+  sms: boolean;
+  email: boolean;
+  when: "before" | "after"; // relative to the Mass start
+  offsetMinutes: number; // how far before or after
+};
+export type AppSettings = { noShow: NoShowSettings };
+export const DEFAULT_SETTINGS: AppSettings = { noShow: { enabled: false, sms: true, email: false, when: "before", offsetMinutes: 10 } };
+
+// One row. Edited on Admin -> Settings.
+export const appSettings = pgTable("app_settings", {
+  id: integer("id").primaryKey().default(1),
+  data: jsonb("data").$type<AppSettings>().notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 });
 
 // ---------- Blackout dates ----------

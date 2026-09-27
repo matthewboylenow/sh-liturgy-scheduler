@@ -1,6 +1,7 @@
 {
   "crons": [
     { "path": "/api/cron/reminders", "schedule": "0 17 * * *" },
-    { "path": "/api/cron/open-slots", "schedule": "0 15 * * 2,5" }
+    { "path": "/api/cron/open-slots", "schedule": "0 15 * * 2,5" },
+    { "path": "/api/cron/no-shows", "schedule": "*/15 * * * 0,6" }
   ]
 }

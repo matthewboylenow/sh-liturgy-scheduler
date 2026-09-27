@@ -9,6 +9,7 @@ import { notifyMinistryOpenSlot } from "@/lib/alerts";
 import { requireUser, hashPassword, verifyPassword, issueOtp, verifyOtp } from "@/lib/auth";
 import { claimPosition, changeAssignment, ScheduleError } from "@/lib/schedule";
 import { normalizeEmail, normalizePhone } from "@/lib/phone";
+import { regenerateCalendarToken } from "@/lib/ical";
 
 function back(formData: FormData, fallback: string) {
   const r = String(formData.get("return") ?? "");
@@ -142,4 +143,11 @@ export async function removeMyBlackout(formData: FormData) {
   await db.delete(blackouts).where(and(eq(blackouts.id, String(formData.get("id"))), eq(blackouts.userId, user.id)));
   revalidatePath("/app");
   redirect("/app/profile?ok=saved");
+}
+
+export async function resetCalendarLink() {
+  const user = await requireUser();
+  await regenerateCalendarToken(user.id);
+  revalidatePath("/app/profile");
+  redirect("/app/profile?ok=calendar");
 }

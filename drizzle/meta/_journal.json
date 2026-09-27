@@ -36,6 +36,13 @@
       "when": 1790551760685,
       "tag": "0004_blackouts_login_attempts",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1790552513069,
+      "tag": "0005_settings_calendar_noshow",
+      "breakpoints": true
     }
   ]
 }

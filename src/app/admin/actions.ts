@@ -23,6 +23,7 @@ import { datesForWeekday, localToUtc, DAY_NAMES, fmtTime } from "@/lib/time";
 import { claimPosition, changeAssignment, createLiturgyFromMassTime, syncUpcomingToPattern, ScheduleError } from "@/lib/schedule";
 import { parsePresiderPdf, applyPresiderImport } from "@/lib/presiders";
 import { presiderImports, blackouts } from "@/db/schema";
+import { saveSettings } from "@/lib/settings";
 
 function slugify(s: string) {
   return s
@@ -125,6 +126,7 @@ export async function updatePerson(formData: FormData) {
   if (isAdmin && !mayManage && target.id !== actor.id) fail(path, "Only a super admin can edit another admin.");
   const updates: Partial<typeof users.$inferInsert> = {
     tags: isAdmin ? formData.getAll("tags").map(String).filter(Boolean) : target.tags,
+    notifyNoShows: isAdmin && target.role !== "volunteer" ? formData.get("notifyNoShows") === "on" : target.notifyNoShows,
     firstName,
     lastName,
     phone,
@@ -684,4 +686,22 @@ export async function removeBlackout(formData: FormData) {
   await db.delete(blackouts).where(eq(blackouts.id, id));
   revalidatePath(ret);
   ok(ret, "Removed.");
+}
+
+// ---------------- Settings ----------------
+
+export async function saveNoShowSettings(formData: FormData) {
+  const actor = await requireAdmin();
+  const hours = Math.max(0, Math.min(12, Number(str(formData, "hours")) || 0));
+  const minutes = Math.max(0, Math.min(59, Number(str(formData, "minutes")) || 0));
+  const noShow = {
+    enabled: formData.get("enabled") === "on",
+    sms: formData.get("sms") === "on",
+    email: formData.get("email") === "on",
+    when: (str(formData, "when") === "after" ? "after" : "before") as "before" | "after",
+    offsetMinutes: hours * 60 + minutes,
+  };
+  await saveSettings({ noShow });
+  await db.insert(auditLog).values({ actorId: actor.id, action: "settings.no_show", detail: JSON.stringify(noShow) });
+  ok("/admin/settings");
 }

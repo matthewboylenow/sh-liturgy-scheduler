@@ -104,6 +104,11 @@ export default async function PersonPage({ params, searchParams }: { params: Pro
                 <label className="flex items-center gap-2 self-end text-sm">
                   <input type="checkbox" name="tags" value="Peer Ministry" defaultChecked={p.tags.includes("Peer Ministry")} /> Peer Ministry (teen volunteer)
                 </label>
+                {p.role !== "volunteer" && (
+                  <label className="flex items-center gap-2 self-end text-sm">
+                    <input type="checkbox" name="notifyNoShows" defaultChecked={p.notifyNoShows} /> Gets no-show alerts
+                  </label>
+                )}
               </>
             )}
           </div>

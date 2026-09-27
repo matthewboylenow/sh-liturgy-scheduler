@@ -77,3 +77,21 @@ h3 {
   -webkit-user-select: none;
   touch-action: manipulation;
 }
+
+/* Printable weekend sheet */
+@media print {
+  @page {
+    size: letter portrait;
+    margin: 0.6in;
+  }
+  body {
+    background: #fff;
+  }
+  .print-sheet {
+    max-width: none;
+    padding: 0;
+  }
+  .mass-block {
+    break-inside: avoid;
+  }
+}

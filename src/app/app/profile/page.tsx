@@ -1,7 +1,9 @@
 import { requireUser } from "@/lib/auth";
 import { PageTitle } from "@/components/shell";
 import { Alert, SubmitButton } from "@/components/ui";
-import { changePassword, confirmContactChange, setMfa, updateProfile, addMyBlackout, removeMyBlackout } from "@/app/app/actions";
+import { changePassword, confirmContactChange, setMfa, updateProfile, addMyBlackout, removeMyBlackout, resetCalendarLink } from "@/app/app/actions";
+import { calendarTokenFor } from "@/lib/ical";
+import { env } from "@/lib/env";
 import { blackoutsFor } from "@/lib/blackouts";
 import { fmtDate } from "@/lib/time";
 import { formatPhone } from "@/lib/phone";
@@ -12,9 +14,13 @@ export default async function ProfilePage({ searchParams }: { searchParams: Prom
   const sp = await searchParams;
   const user = await requireUser();
   const away = await blackoutsFor(user.id, { upcomingOnly: true });
+  const token = await calendarTokenFor(user.id, user.calendarToken);
+  const feedUrl = `${env.appUrl()}/api/ical/${token}`;
+  const webcal = feedUrl.replace(/^https?:/, "webcal:");
   const OK: Record<string, string> = {
     saved: "Saved.",
     away: "Away dates saved. You will not get open-slot texts for them.",
+    calendar: "New calendar link made. The old one stopped working.",
     verified: "Verified and saved.",
     password: "Password updated.",
   };
@@ -126,6 +132,23 @@ export default async function ProfilePage({ searchParams }: { searchParams: Prom
               <input name="note" className="input" placeholder="Note" aria-label="Note" />
               <SubmitButton className="btn-ghost">Add</SubmitButton>
             </form>
+          </div>
+
+          <div className="card space-y-3 p-4">
+            <h2 className="text-lg">Calendar</h2>
+            <p className="text-sm text-muted">Your Masses in your phone or computer calendar. Subscribe once and it stays current.</p>
+            <div className="flex flex-wrap gap-2">
+              <a href={webcal} className="btn-primary">Subscribe</a>
+              <a href={`${feedUrl}?download=1`} className="btn-ghost">Download .ics</a>
+            </div>
+            <details className="text-xs text-muted">
+              <summary className="cursor-pointer">Subscribe by hand</summary>
+              <p className="mt-1">iPhone: Settings, Calendar, Accounts, Add Account, Other, Add Subscribed Calendar, paste this address. Google Calendar: Other calendars, +, From URL.</p>
+              <code className="mt-1 block break-all rounded bg-cream p-2">{feedUrl}</code>
+              <form action={resetCalendarLink} className="mt-2">
+                <button className="underline">Make a new link</button>
+              </form>
+            </details>
           </div>
 
           <form action={setMfa} className="card space-y-3 p-4">

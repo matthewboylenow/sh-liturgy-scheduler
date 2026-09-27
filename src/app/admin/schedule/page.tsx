@@ -26,11 +26,16 @@ export default async function SchedulePage({ searchParams }: { searchParams: Pro
         title="Schedule"
         subtitle="Volunteers see published Masses only."
         actions={
-          admin && (
-            <Link href="/admin/schedule/presiders" className="btn-ghost">
-              Presider schedule
+          <>
+            <Link href={`/admin/schedule/print?from=${from}&to=${to}`} className="btn-ghost">
+              Print
             </Link>
-          )
+            {admin && (
+              <Link href="/admin/schedule/presiders" className="btn-ghost">
+                Presider schedule
+              </Link>
+            )}
+          </>
         }
       />
       <Flash sp={sp} />

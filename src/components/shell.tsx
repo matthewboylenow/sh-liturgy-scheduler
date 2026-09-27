@@ -20,14 +20,14 @@ export function Shell({
   return (
     <div className="flex min-h-full flex-1 flex-col">
       {user.impersonatorId && (
-        <form action={returnToOwnAccount} className="flex items-center justify-center gap-3 bg-gold px-4 py-2 text-sm text-navy">
+        <form action={returnToOwnAccount} className="flex items-center justify-center gap-3 bg-gold px-4 py-2 text-sm text-navy print:hidden">
           <span>
             Signed in as {user.firstName} {user.lastName}.
           </span>
           <button className="rounded-md border border-navy/30 bg-white px-3 py-1 font-semibold">Return to my account</button>
         </form>
       )}
-      <header className="border-b border-line bg-white">
+      <header className="border-b border-line bg-white print:hidden">
         <div className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-4 pt-3">
           <Link href={area === "admin" ? "/admin" : "/app"} className="flex items-center gap-2.5">
             <Image src="/brand/saint-helen-mark.png" alt="" width={36} height={36} className="h-9 w-9" />
@@ -52,7 +52,7 @@ export function Shell({
         </div>
       </header>
       <main className="mx-auto w-full max-w-6xl flex-1 px-4 py-6">{children}</main>
-      <footer className="px-4 py-4 text-center text-xs text-muted">Parish Community of {env.parishName()} · Westfield, NJ</footer>
+      <footer className="px-4 py-4 text-center text-xs text-muted print:hidden">Parish Community of {env.parishName()} · Westfield, NJ</footer>
     </div>
   );
 }
