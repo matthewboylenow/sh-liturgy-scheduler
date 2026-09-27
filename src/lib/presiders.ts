@@ -7,6 +7,7 @@ import { db } from "@/db";
 import { assignments, auditLog, liturgies, massTimes, ministries, ministryMembers, positions, presiderImports, users, type PresiderImportPayload } from "@/db/schema";
 import { env } from "./env";
 import { createLiturgyFromMassTime, ScheduleError } from "./schedule";
+import { addDaysLocal } from "./time";
 
 /**
  * Presiders whose initials never appear in the PDF legend. The pastor signs the
@@ -95,6 +96,12 @@ export async function shapePayload(out: z.infer<typeof Extracted>): Promise<Pres
     rows.push({ date: m.date, time, initials, sundayName: m.sunday_name?.trim() || null });
   }
   rows.sort((a, b) => (a.date + a.time).localeCompare(b.date + b.time));
+  // The Saturday vigil belongs to the Sunday that follows it, so it carries that Sunday's name.
+  const sundayNames = new Map<string, string>();
+  for (const r of rows) if (r.sundayName && parseISO(r.date).getDay() === 0) sundayNames.set(r.date, r.sundayName);
+  for (const r of rows) {
+    if (!r.sundayName && parseISO(r.date).getDay() === 6) r.sundayName = sundayNames.get(addDaysLocal(r.date, 1)) ?? null;
+  }
   return { legend, rows, skipped };
 }
 
