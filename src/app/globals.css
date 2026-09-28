@@ -95,3 +95,10 @@ h3 {
     break-inside: avoid;
   }
 }
+
+/* Kiosk on a large portrait screen (a rotated 1080x1920 monitor): scale the whole board up so tiles stay finger-sized at arm's length. */
+@media (orientation: portrait) and (min-width: 900px) {
+  .kiosk {
+    zoom: 1.4;
+  }
+}
