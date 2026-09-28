@@ -47,7 +47,7 @@ export function LiturgyCard({
           </div>
         </div>
         <div className="text-xs text-muted">
-          {cov.open === 0 ? <span className="text-green-700">Filled</span> : <span className="text-rust">{cov.open} open</span>}
+          {cov.total === 0 ? <span>No seats</span> : cov.open === 0 ? <span className="text-green-700">Filled</span> : <span className="text-rust">{cov.open} open</span>}
           {cov.subs > 0 && <span className="ml-2 text-yellow-800">{cov.subs} need a sub</span>}
         </div>
       </div>
@@ -89,7 +89,7 @@ export function LiturgyCard({
                           <form action={signUp}>
                             <input type="hidden" name="positionId" value={p.id} />
                             <input type="hidden" name="return" value={returnTo} />
-                            <SubmitButton className={a ? "btn-ghost px-2.5 py-1 text-xs" : "btn-accent px-2.5 py-1 text-xs"}>
+                            <SubmitButton className={a ? "btn-ghost shrink-0 whitespace-nowrap px-2.5 py-1 text-xs" : "btn-accent shrink-0 whitespace-nowrap px-2.5 py-1 text-xs"}>
                               {a ? "Take it" : "Sign up"}
                             </SubmitButton>
                           </form>

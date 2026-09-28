@@ -5,6 +5,23 @@ import type { KioskMass } from "@/lib/kiosk";
 
 type Today = { date: string; masses: KioskMass[]; now: string; kiosk: { name: string } };
 type Slot = KioskMass["ministries"][number]["slots"][number];
+type Queued = { assignmentId: string; at: string; name: string };
+
+const QUEUE_KEY = "sh_kiosk_queue";
+const OFFLINE = "No connection. Showing the last update. Check-ins are saved on this screen and sent when it is back.";
+
+function readQueue(): Queued[] {
+  try {
+    return JSON.parse(localStorage.getItem(QUEUE_KEY) ?? "[]");
+  } catch {
+    return [];
+  }
+}
+function writeQueue(q: Queued[]) {
+  try {
+    localStorage.setItem(QUEUE_KEY, JSON.stringify(q));
+  } catch {}
+}
 
 function fmtTime(t: string) {
   const [h, m] = t.split(":").map(Number);
@@ -20,16 +37,47 @@ export function KioskBoard({ kioskName, parish }: { kioskName: string; parish: s
   const [members, setMembers] = useState<{ id: string; name: string }[]>([]);
   const [toast, setToast] = useState<{ text: string; undo?: string } | null>(null);
   const [clock, setClock] = useState(new Date());
+  const [queued, setQueued] = useState<Queued[]>([]);
+
+  /** Send queued check-ins in order. Stops at the first one that cannot reach the server. */
+  const flush = useCallback(async () => {
+    let q = readQueue();
+    while (q.length) {
+      const item = q[0];
+      try {
+        const r = await fetch("/api/kiosk/checkin", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ assignmentId: item.assignmentId, at: item.at }) });
+        if (!r.ok && r.status < 500) {
+          // The server understood and said no (Mass not today, seat gone). Drop it rather than retry forever.
+          q = q.slice(1);
+          writeQueue(q);
+          continue;
+        }
+        if (!r.ok) break;
+        q = q.slice(1);
+        writeQueue(q);
+      } catch {
+        break; // still offline
+      }
+    }
+    setQueued(q);
+  }, []);
 
   const load = useCallback(async () => {
     try {
+      await flush();
       const r = await fetch("/api/kiosk/today", { cache: "no-store" });
       if (!r.ok) throw new Error(r.status === 401 ? "This screen is no longer authorized." : "Could not load today's schedule.");
       setData(await r.json());
       setError(null);
     } catch (e) {
-      setError(e instanceof Error ? e.message : String(e));
+      const msg = e instanceof Error ? e.message : String(e);
+      setError(/fetch|network/i.test(msg) ? OFFLINE : msg);
     }
+  }, [flush]);
+
+  useEffect(() => {
+    const t = setTimeout(() => setQueued(readQueue()), 0); // after hydration, so the server and first client render match
+    return () => clearTimeout(t);
   }, []);
 
   useEffect(() => {
@@ -62,30 +110,53 @@ export function KioskBoard({ kioskName, parish }: { kioskName: string; parish: s
   async function checkIn(slot: Slot) {
     if (!slot.assignmentId) return;
     setConfirm(null);
-    const r = await fetch("/api/kiosk/checkin", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ assignmentId: slot.assignmentId }) });
-    if (r.ok) setToast({ text: `${slot.name} checked in.`, undo: slot.assignmentId });
-    else setToast({ text: (await r.json()).error ?? "That did not go through." });
+    try {
+      const r = await fetch("/api/kiosk/checkin", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ assignmentId: slot.assignmentId }) });
+      if (r.ok) setToast({ text: `${slot.name} checked in.`, undo: slot.assignmentId });
+      else setToast({ text: (await r.json().catch(() => ({}))).error ?? "That did not go through." });
+    } catch {
+      // Offline: remember the tap on this screen and send it when the connection returns.
+      const q = [...readQueue(), { assignmentId: slot.assignmentId, at: new Date().toISOString(), name: slot.name ?? "" }];
+      writeQueue(q);
+      setQueued(q);
+      setToast({ text: `${slot.name} checked in. Saved on this screen until the connection is back.` });
+    }
     load();
   }
   async function undo(assignmentId: string) {
     setToast(null);
-    await fetch("/api/kiosk/checkin", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ assignmentId, undo: true }) });
+    try {
+      await fetch("/api/kiosk/checkin", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ assignmentId, undo: true }) });
+    } catch {
+      setToast({ text: "No connection. Undo from the admin Mass page later." });
+    }
     load();
   }
   async function openFill(slot: Slot, ministryId: string, ministry: string) {
     setFill({ slot, ministryId, ministry });
     setMembers([]);
-    const r = await fetch(`/api/kiosk/fill?ministryId=${ministryId}`);
-    if (r.ok) setMembers((await r.json()).members);
+    try {
+      const r = await fetch(`/api/kiosk/fill?ministryId=${ministryId}`);
+      if (r.ok) setMembers((await r.json()).members);
+      else throw new Error();
+    } catch {
+      setFill(null);
+      setToast({ text: "No connection. Fill-ins need the roster, so try again in a minute." });
+    }
   }
   async function doFill(userId: string, name: string) {
     if (!fill) return;
-    const r = await fetch("/api/kiosk/fill", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ positionId: fill.slot.positionId, userId }) });
     setFill(null);
-    if (r.ok) setToast({ text: `${name} checked in as a fill-in.` });
-    else setToast({ text: (await r.json()).error ?? "Could not fill that slot." });
+    try {
+      const r = await fetch("/api/kiosk/fill", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ positionId: fill.slot.positionId, userId }) });
+      if (r.ok) setToast({ text: `${name} checked in as a fill-in.` });
+      else setToast({ text: (await r.json().catch(() => ({}))).error ?? "Could not fill that slot." });
+    } catch {
+      setToast({ text: "No connection. Try the fill-in again in a minute." });
+    }
     load();
   }
+  const queuedIds = useMemo(() => new Set(queued.map((q) => q.assignmentId)), [queued]);
 
   const totals = mass
     ? mass.ministries.reduce(
@@ -114,6 +185,7 @@ export function KioskBoard({ kioskName, parish }: { kioskName: string; parish: s
       </header>
 
       {error && <div className="bg-rust px-6 py-2 text-sm">{error}</div>}
+      {!error && queued.length > 0 && <div className="bg-gold/30 px-6 py-2 text-sm text-gold">{queued.length} check-in{queued.length === 1 ? "" : "s"} waiting to send.</div>}
 
       {data && data.masses.length === 0 && (
         <div className="flex flex-1 items-center justify-center p-10 text-center">
@@ -139,7 +211,7 @@ export function KioskBoard({ kioskName, parish }: { kioskName: string; parish: s
                 >
                   <div className="text-xl font-semibold">{fmtTime(m.time)}</div>
                   <div className={`text-xs ${active ? "text-navy/60" : "text-white/60"}`}>
-                    {m.title ?? m.location} · {here}/{total} here
+                    {m.title ?? m.location} · {total ? `${here}/${total} here` : "no seats"}
                   </div>
                 </button>
               );
@@ -159,6 +231,7 @@ export function KioskBoard({ kioskName, parish }: { kioskName: string; parish: s
                 )}
               </div>
               {mass.notes && <div className="mb-4 rounded-lg bg-gold/20 px-4 py-2 text-gold">{mass.notes}</div>}
+              {mass.ministries.length === 0 && <p className="py-10 text-center text-xl text-white/60">No seats at this Mass.</p>}
               <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
                 {mass.ministries.map((g) => (
                   <div key={g.id} className="rounded-xl bg-white/5 p-3">
@@ -171,7 +244,7 @@ export function KioskBoard({ kioskName, parish }: { kioskName: string; parish: s
                     </div>
                     <div className="grid gap-2">
                       {g.slots.map((s) => {
-                        const here = !!s.checkedInAt;
+                        const here = !!s.checkedInAt || (!!s.assignmentId && queuedIds.has(s.assignmentId));
                         const open = !s.assignmentId || s.status === "sub_requested";
                         return (
                           <button
