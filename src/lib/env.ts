@@ -18,7 +18,7 @@ export const env = {
   }),
   resend: () => ({
     apiKey: process.env.RESEND_API_KEY,
-    from: process.env.EMAIL_FROM ?? "Saint Helen Liturgy <liturgy@sending.sainthelen.org>",
+    from: process.env.EMAIL_FROM ?? "Saint Helen Liturgy Scheduler <liturgy@sending.sainthelen.org>",
     replyTo: process.env.EMAIL_REPLY_TO ?? "liturgy@sainthelen.org",
   }),
   microsoft: () => ({

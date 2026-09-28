@@ -1,4 +1,4 @@
-# Saint Helen Liturgy
+# Saint Helen Liturgy Scheduler
 
 Weekend liturgy ministry scheduling and sacristy check-in for the Parish Community of Saint Helen. Replaces SignUpGenius.
 

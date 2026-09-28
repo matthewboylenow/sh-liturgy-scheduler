@@ -104,7 +104,7 @@ export function emailShell(title: string, bodyHtml: string): string {
   const parish = env.parishName();
   return `<!doctype html><html><body style="margin:0;background:#FAF9F7;font-family:Georgia,serif;color:#1a1a1a">
 <div style="max-width:560px;margin:0 auto;padding:32px 20px">
-  <div style="background:#1F346D;color:#FAF9F7;padding:18px 24px;border-radius:8px 8px 0 0;font-size:18px;letter-spacing:.3px">${parish} Liturgy</div>
+  <div style="background:#1F346D;color:#FAF9F7;padding:18px 24px;border-radius:8px 8px 0 0;font-size:18px;letter-spacing:.3px">${parish} Liturgy Scheduler</div>
   <div style="background:#fff;padding:24px;border:1px solid #e6e2dc;border-top:0;border-radius:0 0 8px 8px;font-family:Helvetica,Arial,sans-serif;font-size:15px;line-height:1.5">
     <h1 style="font-size:20px;margin:0 0 12px;font-family:Georgia,serif">${title}</h1>
     ${bodyHtml}

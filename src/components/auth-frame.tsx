@@ -12,7 +12,7 @@ export function AuthFrame({ parish, children }: { parish: string; children: Reac
         <span className={`mx-auto mb-3 flex h-16 w-16 items-center justify-center rounded-xl ${staff ? "bg-white" : ""}`}>
           <Image src="/brand/saint-helen-mark.png" alt="" width={56} height={56} priority className="h-14 w-14" />
         </span>
-        <h1 className={`text-2xl ${staff ? "text-white" : "text-navy"}`}>{parish} Liturgy</h1>
+        <h1 className={`text-2xl ${staff ? "text-white" : "text-navy"}`}>{parish} Liturgy Scheduler</h1>
         {staff && <p className="mt-1 text-sm uppercase tracking-widest text-white/60">Staff</p>}
       </div>
       {children}

@@ -31,7 +31,7 @@ export function Shell({
         <div className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-4 pt-3">
           <Link href={area === "admin" ? "/admin" : "/app"} className="flex items-center gap-2.5">
             <Image src="/brand/saint-helen-mark.png" alt="" width={36} height={36} className="h-9 w-9" />
-            <span className="whitespace-nowrap font-serif text-lg text-navy sm:text-xl">{env.parishName()} Liturgy</span>
+            <span className="whitespace-nowrap font-serif text-lg text-navy sm:text-xl">{env.parishName()} Liturgy Scheduler</span>
             {area === "admin" && <span className="pill hidden bg-rust/10 text-rust sm:inline-flex">Admin</span>}
           </Link>
           <div className="flex items-center gap-4 text-sm">

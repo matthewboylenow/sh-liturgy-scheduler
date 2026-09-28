@@ -2,7 +2,7 @@ import type { Metadata, Viewport } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: { default: "Saint Helen Liturgy", template: "%s | Saint Helen Liturgy" },
+  title: { default: "Saint Helen Liturgy Scheduler", template: "%s | Saint Helen Liturgy Scheduler" },
   description: "Weekend liturgy ministry scheduling and check-in for the Parish Community of Saint Helen.",
 };
 

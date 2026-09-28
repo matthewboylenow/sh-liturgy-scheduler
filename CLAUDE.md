@@ -1,6 +1,6 @@
 @AGENTS.md
 
-# Saint Helen Liturgy: project notes for Claude Code
+# Saint Helen Liturgy Scheduler: project notes for Claude Code
 
 Weekend liturgy ministry scheduling and sacristy check-in for the Parish Community of Saint Helen (Westfield, NJ). Replaces SignUpGenius. Owner: Matthew Boyle (Director of Communications, also builds it). Stakeholder: Adrian Soltys, Director of Worship, who wants the sacristy kiosk.
 

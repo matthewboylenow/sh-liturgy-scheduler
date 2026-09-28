@@ -285,7 +285,7 @@ export async function issueOtp(opts: {
   }
   return sendEmail(
     opts.destination,
-    `Your ${parish} Liturgy code: ${code}`,
+    `Your ${parish} Liturgy Scheduler code: ${code}`,
     emailShell("Your sign-in code", `<p style="font-size:28px;letter-spacing:6px;font-weight:bold">${code}</p><p>Expires in ${OTP_MINUTES} minutes. If you did not ask for a code, ignore this email.</p>`),
     { userId: opts.userId, kind: "otp" },
     `Your code is ${code}. It expires in ${OTP_MINUTES} minutes.`,

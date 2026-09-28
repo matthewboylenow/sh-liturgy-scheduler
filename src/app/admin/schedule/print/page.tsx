@@ -38,7 +38,7 @@ export default async function PrintPage({ searchParams }: { searchParams: Promis
       </div>
 
       <header className="mb-4 border-b-2 border-black pb-2">
-        <h1 className="font-serif text-2xl">Saint Helen Liturgy</h1>
+        <h1 className="font-serif text-2xl">Saint Helen Liturgy Scheduler</h1>
         <p className="text-sm">
           Ministry schedule, {fmtDateLong(from)}
           {to !== from ? ` to ${fmtDateLong(to)}` : ""}

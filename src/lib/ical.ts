@@ -47,7 +47,7 @@ export function wrapCalendar(events: string[], name: string) {
   return [
     "BEGIN:VCALENDAR",
     "VERSION:2.0",
-    `PRODID:-//${esc(env.parishName())} Liturgy//EN`,
+    `PRODID:-//${esc(env.parishName())} Liturgy Scheduler//EN`,
     "CALSCALE:GREGORIAN",
     "METHOD:PUBLISH",
     `X-WR-CALNAME:${esc(name)}`,
@@ -63,5 +63,5 @@ export async function calendarFor(userId: string) {
   const [upcoming, past] = await Promise.all([getMyAssignments(userId), getMyAssignments(userId, { past: true })]);
   const cutoff = addDaysLocal(todayLocal(), -60);
   const rows = [...past.filter((r) => r.liturgy.date >= cutoff), ...upcoming];
-  return wrapCalendar(rows.map(eventFor), `${env.parishName()} Liturgy`);
+  return wrapCalendar(rows.map(eventFor), `${env.parishName()} Liturgy Scheduler`);
 }
