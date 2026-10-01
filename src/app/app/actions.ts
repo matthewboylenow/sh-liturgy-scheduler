@@ -30,6 +30,30 @@ export async function signUp(formData: FormData) {
   redirect(`${ret}${ret.includes("?") ? "&" : "?"}ok=signed_up`);
 }
 
+/** Several seats in one go. Each is claimed on its own, so one failure does not undo the others. */
+export async function signUpMany(formData: FormData) {
+  const user = await requireUser();
+  const ids = [...new Set(formData.getAll("positionId").map(String).filter(Boolean))];
+  const ret = back(formData, "/app/schedule");
+  const sep = ret.includes("?") ? "&" : "?";
+  if (!ids.length) redirect(`${ret}${sep}error=${encodeURIComponent("Pick at least one Mass.")}`);
+  let done = 0;
+  const problems: string[] = [];
+  for (const id of ids) {
+    try {
+      await claimPosition(user, id);
+      done++;
+    } catch (e) {
+      if (e instanceof ScheduleError) problems.push(e.message);
+      else throw e;
+    }
+  }
+  revalidatePath("/app");
+  if (!done) redirect(`${ret}${sep}error=${encodeURIComponent(problems[0] ?? "Nothing was signed up.")}`);
+  const msg = `You are signed up for ${done} Mass${done === 1 ? "" : "es"}.${problems.length ? ` ${problems.length} did not go through: ${[...new Set(problems)].join(" ")}` : ""}`;
+  redirect(`${ret}${sep}ok=${encodeURIComponent(`signed:${msg}`)}`);
+}
+
 export async function updateAssignment(formData: FormData) {
   const user = await requireUser();
   const id = String(formData.get("assignmentId"));
