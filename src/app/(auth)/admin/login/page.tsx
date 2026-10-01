@@ -13,8 +13,8 @@ export default async function AdminLoginPage({ searchParams }: { searchParams: P
   return (
     <>
       <LoginForm area="admin" tab={sp.tab ?? "password"} error={sp.error} next={sp.next} showMicrosoft={microsoftConfigured() || process.env.NODE_ENV !== "production"} />
-      <p className="mt-6 text-xs text-white/70">
-        <Link href="/login" className="underline">Volunteer sign-in</Link>
+      <p className="mt-6 text-sm text-muted">
+        <Link href="/login" className="text-navy underline">Volunteer sign-in</Link>
       </p>
     </>
   );

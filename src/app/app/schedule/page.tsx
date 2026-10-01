@@ -77,12 +77,13 @@ export default async function SchedulePage({ searchParams }: { searchParams: Pro
   return (
     <>
       <PageTitle
-        title="Sign up"
-        subtitle="Tap the Masses you can serve, then Sign up once. Tap a green one to see or change it."
+        title="Sign up to serve"
+        eyebrow="Open seats"
+        subtitle="Tap each Mass you can serve, then press Sign up once. Green means you are already serving."
         actions={
-          <div className="flex gap-1">
+          <div className="flex rounded-lg bg-sand p-1" role="group" aria-label="How far ahead">
             {[8, 16, 26].map((w) => (
-              <Link key={w} href={`/app/schedule?weeks=${w}`} className={`${weeks === w ? "btn-primary" : "btn-ghost"} px-3 py-1.5 text-xs`}>
+              <Link key={w} href={`/app/schedule?weeks=${w}`} aria-current={weeks === w ? "true" : undefined} className={`inline-flex min-h-10 items-center rounded-md px-3 text-sm font-semibold ${weeks === w ? "bg-white text-navy shadow-sm" : "text-muted hover:text-ink"}`}>
                 {w} weeks
               </Link>
             ))}
@@ -105,7 +106,7 @@ export default async function SchedulePage({ searchParams }: { searchParams: Pro
         </div>
       )}
       {user.ministryIds.length === 0 && <Alert kind="warn">You are not in a ministry yet. Ask the parish office to add you.</Alert>}
-      {rows.length === 0 && user.ministryIds.length > 0 && <p className="text-sm text-muted">No Masses in this range.</p>}
+      {rows.length === 0 && user.ministryIds.length > 0 && <p className="text-base text-muted">No Masses in this range.</p>}
       {rows.length > 0 && <SignupGrid columns={columns} rows={rows} returnTo={self} />}
     </>
   );

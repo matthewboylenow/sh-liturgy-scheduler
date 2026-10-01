@@ -36,17 +36,18 @@ export function LoginForm({
   const nextVal = next ?? (area === "admin" ? "/admin" : "/app");
 
   return (
-    <div className="card w-full max-w-md p-6">
-      <div className="mb-4 flex rounded-md border border-line p-1 text-sm">
+    <div className="card w-full max-w-md p-6 sm:p-8">
+      <h2 className="mb-5 text-2xl font-bold text-navy">{area === "admin" ? "Sign in" : "Welcome back"}</h2>
+      <div className="mb-5 flex rounded-lg bg-sand p-1 text-base">
         <Link
           href={`${base}?tab=code${next ? `&next=${encodeURIComponent(next)}` : ""}`}
-          className={`flex-1 rounded px-3 py-1.5 text-center font-medium ${activeTab === "code" ? "bg-navy text-white" : "text-muted hover:text-ink"}`}
+          className={`flex-1 rounded-md px-3 py-2.5 text-center font-semibold ${activeTab === "code" ? "bg-white text-navy shadow-sm" : "text-muted hover:text-ink"}`}
         >
-          Code
+          Send me a code
         </Link>
         <Link
           href={`${base}?tab=password${next ? `&next=${encodeURIComponent(next)}` : ""}`}
-          className={`flex-1 rounded px-3 py-1.5 text-center font-medium ${activeTab === "password" ? "bg-navy text-white" : "text-muted hover:text-ink"}`}
+          className={`flex-1 rounded-md px-3 py-2.5 text-center font-semibold ${activeTab === "password" ? "bg-white text-navy shadow-sm" : "text-muted hover:text-ink"}`}
         >
           Password
         </Link>
@@ -68,7 +69,7 @@ export function LoginForm({
             </label>
             <input id="destination" name="destination" className="input" inputMode="email" autoComplete="username" required autoFocus />
           </div>
-          <SubmitButton pendingText="Sending">Send code</SubmitButton>
+          <SubmitButton className="btn-primary btn-lg w-full" pendingText="Sending">Send code</SubmitButton>
         </form>
       ) : (
         <form action={passwordLogin} className="space-y-4">
@@ -86,13 +87,13 @@ export function LoginForm({
             </label>
             <input id="password" name="password" type="password" className="input" autoComplete="current-password" required />
           </div>
-          <SubmitButton pendingText="Checking">Sign in</SubmitButton>
+          <SubmitButton className="btn-primary btn-lg w-full" pendingText="Checking">Sign in</SubmitButton>
         </form>
       )}
 
       {showMicrosoft && (
         <>
-          <div className="my-5 flex items-center gap-3 text-xs text-muted">
+          <div className="my-5 flex items-center gap-3 text-sm text-muted">
             <span className="h-px flex-1 bg-line" />
             or
             <span className="h-px flex-1 bg-line" />

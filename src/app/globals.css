@@ -1,18 +1,25 @@
 @import "tailwindcss";
 
+/* Tokens follow sainthelen.org: navy primary, rust accent, warm off-white canvas, Libre Baskerville / Libre Franklin. */
 @theme {
   --color-navy: #1f346d;
-  --color-navy-dark: #172752;
+  --color-navy-dark: #162849;
   --color-navy-light: #2c4a95;
   --color-rust: #cd5334;
-  --color-rust-dark: #b1452a;
-  --color-cream: #faf9f7;
+  --color-rust-dark: #b84829;
+  --color-cream: #f7f5f1;
+  --color-sand: #efebe4;
   --color-gold: #d4af37;
-  --color-ink: #1c1c1c;
-  --color-muted: #6b6b6b;
-  --color-line: #e6e2dc;
+  --color-teal: #17bebb;
+  --color-ink: #0e0e0e;
+  --color-muted: #5f6368;
+  --color-line: #e3dfd8;
   --font-serif: "Libre Baskerville", Georgia, "Times New Roman", serif;
   --font-sans: "Libre Franklin", -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+  --shadow-card: 0 4px 20px rgba(31, 52, 109, 0.07);
+  --shadow-btn: 0 1px 4px rgba(0, 0, 0, 0.08);
+  --shadow-btn-hover: 0 2px 8px rgba(0, 0, 0, 0.12);
+  --radius-card: 1rem;
 }
 
 html,
@@ -25,41 +32,81 @@ body {
   color: var(--color-ink);
   font-family: var(--font-sans);
   -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
 }
 
 h1,
 h2,
 h3 {
   font-family: var(--font-serif);
+  letter-spacing: -0.005em;
 }
 
-/* Form primitives */
+/* Small uppercase label above a heading, as on the parish site. */
+.eyebrow {
+  @apply text-xs font-semibold uppercase tracking-[0.12em] text-rust;
+}
+
+/* Form primitives: 48px tall so they are easy to hit with a finger or a shaky hand. */
 .input {
-  @apply w-full rounded-md border border-line bg-white px-3 py-2 text-base text-ink placeholder:text-muted/70 focus:outline-none focus:ring-2 focus:ring-navy/40;
+  @apply w-full rounded-lg border border-line bg-white px-3.5 py-2.5 text-base text-ink shadow-[inset_0_1px_2px_rgba(0,0,0,0.03)] placeholder:text-muted/70 focus:border-navy focus:outline-none focus:ring-2 focus:ring-navy/25;
+  min-height: 3rem;
 }
 .label {
-  @apply mb-1 block text-sm font-medium text-ink;
+  @apply mb-1.5 block text-sm font-semibold text-ink;
 }
-.btn {
-  @apply inline-flex items-center justify-center gap-2 rounded-md px-4 py-2 text-sm font-semibold transition disabled:cursor-not-allowed disabled:opacity-50;
+
+/* Buttons follow the site's .sh-btn: 8px radius, weight 600, soft shadow, a 1px lift on hover. */
+.btn,
+.btn-primary,
+.btn-accent,
+.btn-ghost,
+.btn-danger {
+  @apply inline-flex items-center justify-center gap-2 rounded-lg px-4 py-2.5 text-base font-semibold leading-tight transition disabled:cursor-not-allowed disabled:opacity-50;
+  min-height: 2.75rem;
+  box-shadow: var(--shadow-btn);
+}
+.btn-primary:hover,
+.btn-accent:hover,
+.btn-ghost:hover,
+.btn-danger:hover {
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-btn-hover);
+}
+.btn-primary:active,
+.btn-accent:active,
+.btn-ghost:active,
+.btn-danger:active {
+  transform: translateY(0);
 }
 .btn-primary {
-  @apply inline-flex items-center justify-center gap-2 rounded-md px-4 py-2 text-sm font-semibold transition disabled:cursor-not-allowed disabled:opacity-50 bg-navy text-white hover:bg-navy-dark;
+  @apply bg-navy text-white hover:bg-navy-dark;
 }
 .btn-accent {
-  @apply inline-flex items-center justify-center gap-2 rounded-md px-4 py-2 text-sm font-semibold transition disabled:cursor-not-allowed disabled:opacity-50 bg-rust text-white hover:bg-rust-dark;
+  @apply bg-rust text-white hover:bg-rust-dark;
 }
 .btn-ghost {
-  @apply inline-flex items-center justify-center gap-2 rounded-md px-4 py-2 text-sm font-semibold transition disabled:cursor-not-allowed disabled:opacity-50 border border-line bg-white text-ink hover:bg-cream;
+  @apply border-2 border-navy bg-white text-navy hover:bg-navy/5;
 }
 .btn-danger {
-  @apply inline-flex items-center justify-center gap-2 rounded-md px-4 py-2 text-sm font-semibold transition disabled:cursor-not-allowed disabled:opacity-50 border border-red-300 bg-white text-red-700 hover:bg-red-50;
+  @apply border-2 border-red-700/70 bg-white text-red-800 hover:bg-red-50;
 }
+.btn-lg {
+  @apply px-6 text-lg;
+  min-height: 3.5rem;
+}
+/* Quiet in-table buttons (admin) keep a flat look. */
+.btn-quiet {
+  @apply inline-flex items-center justify-center gap-1 rounded-md border border-line bg-white px-2.5 py-1 text-xs font-semibold text-ink transition hover:bg-cream;
+  box-shadow: none;
+}
+
 .card {
-  @apply rounded-lg border border-line bg-white shadow-sm;
+  @apply rounded-2xl border border-line/60 bg-white;
+  box-shadow: var(--shadow-card);
 }
 .pill {
-  @apply inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium;
+  @apply inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold;
 }
 .table {
   @apply w-full text-sm;
@@ -69,6 +116,13 @@ h3 {
 }
 .table td {
   @apply border-b border-line/70 px-3 py-2 align-top;
+}
+
+/* Navy band with a faint diagonal texture, used for the volunteer greeting and the sign-in panel. */
+.band {
+  background-color: var(--color-navy);
+  background-image: radial-gradient(ellipse at top left, rgba(255, 255, 255, 0.1), transparent 55%), radial-gradient(ellipse at bottom right, rgba(205, 83, 52, 0.25), transparent 55%);
+  color: #fff;
 }
 
 /* Kiosk: big touch targets, no text selection */
@@ -100,5 +154,14 @@ h3 {
 @media (orientation: portrait) and (min-width: 900px) {
   .kiosk {
     zoom: 1.4;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .btn-primary:hover,
+  .btn-accent:hover,
+  .btn-ghost:hover,
+  .btn-danger:hover {
+    transform: none;
   }
 }

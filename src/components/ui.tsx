@@ -27,7 +27,7 @@ export function Alert({ kind = "info", children }: { kind?: "info" | "error" | "
     success: "border-green-200 bg-green-50 text-green-800",
     warn: "border-gold/50 bg-gold/10 text-yellow-900",
   }[kind];
-  return <div className={`rounded-md border px-3 py-2 text-sm ${styles}`}>{children}</div>;
+  return <div className={`rounded-lg border px-4 py-3 text-base ${styles}`}>{children}</div>;
 }
 
 export function ConfirmButton({

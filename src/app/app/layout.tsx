@@ -8,10 +8,10 @@ export default async function AppLayout({ children }: { children: React.ReactNod
       user={user}
       area="volunteer"
       nav={[
-        { href: "/app", label: "Home" },
-        { href: "/app/schedule", label: "Sign up" },
-        { href: "/app/mine", label: "My schedule" },
-        { href: "/app/profile", label: "Profile" },
+        { href: "/app", label: "Home", icon: "home" },
+        { href: "/app/schedule", label: "Sign up", icon: "plus" },
+        { href: "/app/mine", label: "My schedule", icon: "calendar" },
+        { href: "/app/profile", label: "Profile", icon: "person" },
       ]}
     >
       {children}

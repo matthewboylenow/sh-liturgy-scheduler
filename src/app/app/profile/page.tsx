@@ -27,7 +27,7 @@ export default async function ProfilePage({ searchParams }: { searchParams: Prom
 
   return (
     <>
-      <PageTitle title="Profile" />
+      <PageTitle title="Profile" eyebrow={`${user.firstName} ${user.lastName}`} />
       {sp.error && (
         <div className="mb-4">
           <Alert kind="error">{sp.error}</Alert>
@@ -41,8 +41,8 @@ export default async function ProfilePage({ searchParams }: { searchParams: Prom
 
       {sp.verify && (
         <div className="card mb-4 border-navy/30 p-4">
-          <h2 className="mb-1 text-lg">Enter the code</h2>
-          <p className="mb-3 text-sm text-muted">Sent to {sp.verify.startsWith("+") ? formatPhone(sp.verify) : sp.verify}.</p>
+          <h2 className="mb-1 text-xl font-bold text-navy">Enter the code</h2>
+          <p className="mb-3 text-base text-muted">Sent to {sp.verify.startsWith("+") ? formatPhone(sp.verify) : sp.verify}.</p>
           <form action={confirmContactChange} className="flex gap-2">
             <input type="hidden" name="dest" value={sp.verify} />
             <input name="code" className="input max-w-[10rem] text-center tracking-widest" inputMode="numeric" maxLength={6} required autoFocus />
@@ -52,12 +52,12 @@ export default async function ProfilePage({ searchParams }: { searchParams: Prom
       )}
 
       <div className="grid gap-4 md:grid-cols-2">
-        <form action={updateProfile} className="card space-y-4 p-4">
-          <h2 className="text-lg">Contact and reminders</h2>
+        <form action={updateProfile} className="card space-y-4 p-5">
+          <h2 className="text-xl font-bold text-navy">Contact and reminders</h2>
           <div>
             <label className="label">Name</label>
-            <div className="text-sm">
-              {user.firstName} {user.lastName} <span className="text-xs text-muted">(the parish office can change this)</span>
+            <div className="text-base">
+              {user.firstName} {user.lastName} <span className="text-sm text-muted">(the parish office can change this)</span>
             </div>
           </div>
           <div>
@@ -69,20 +69,20 @@ export default async function ProfilePage({ searchParams }: { searchParams: Prom
             <label className="label">Email</label>
             <input name="email" type="email" className="input" defaultValue={user.email ?? ""} />
           </div>
-          <fieldset className="space-y-2 text-sm">
-            <label className="flex items-center gap-2">
-              <input type="checkbox" name="notifySms" defaultChecked={user.notifySms} /> Text reminders
+          <fieldset className="space-y-3 text-base">
+            <label className="flex min-h-11 items-center gap-3">
+              <input type="checkbox" name="notifySms" defaultChecked={user.notifySms} className="h-5 w-5 accent-navy" /> Text reminders
             </label>
-            <label className="flex items-center gap-2">
-              <input type="checkbox" name="notifyEmail" defaultChecked={user.notifyEmail} /> Email reminders and open-slot notices
+            <label className="flex min-h-11 items-center gap-3">
+              <input type="checkbox" name="notifyEmail" defaultChecked={user.notifyEmail} className="h-5 w-5 accent-navy" /> Email reminders and open-slot notices
             </label>
           </fieldset>
           <SubmitButton>Save</SubmitButton>
         </form>
 
         <div className="space-y-4">
-          <form action={changePassword} className="card space-y-3 p-4">
-            <h2 className="text-lg">{user.passwordHash ? "Change password" : "Add a password"}</h2>
+          <form action={changePassword} className="card space-y-3 p-5">
+            <h2 className="text-xl font-bold text-navy">{user.passwordHash ? "Change password" : "Add a password"}</h2>
             {user.passwordHash && (
               <div>
                 <label className="label">Current password</label>
@@ -100,10 +100,10 @@ export default async function ProfilePage({ searchParams }: { searchParams: Prom
             <SubmitButton className="btn-ghost">Save password</SubmitButton>
           </form>
 
-          <div className="card space-y-3 p-4">
-            <h2 className="text-lg">Dates I am away</h2>
+          <div className="card space-y-3 p-5">
+            <h2 className="text-xl font-bold text-navy">Dates I am away</h2>
             {away.length > 0 && (
-              <ul className="space-y-1 text-sm">
+              <ul className="space-y-1 text-base">
                 {away.map((b) => (
                   <li key={b.id} className="flex items-center justify-between gap-2">
                     <span>
@@ -112,7 +112,7 @@ export default async function ProfilePage({ searchParams }: { searchParams: Prom
                     </span>
                     <form action={removeMyBlackout}>
                       <input type="hidden" name="id" value={b.id} />
-                      <button className="btn-ghost px-2 py-0.5 text-xs">Remove</button>
+                      <button className="btn-ghost min-h-10 px-3 py-1 text-sm">Remove</button>
                     </form>
                   </li>
                 ))}
@@ -134,14 +134,14 @@ export default async function ProfilePage({ searchParams }: { searchParams: Prom
             </form>
           </div>
 
-          <div className="card space-y-3 p-4">
-            <h2 className="text-lg">Calendar</h2>
-            <p className="text-sm text-muted">Your Masses in your phone or computer calendar. Subscribe once and it stays current.</p>
+          <div className="card space-y-3 p-5">
+            <h2 className="text-xl font-bold text-navy">Calendar</h2>
+            <p className="text-base text-muted">Your Masses in your phone or computer calendar. Subscribe once and it stays current.</p>
             <div className="flex flex-wrap gap-2">
               <a href={webcal} className="btn-primary">Subscribe</a>
               <a href={`${feedUrl}?download=1`} className="btn-ghost">Download .ics</a>
             </div>
-            <details className="text-xs text-muted">
+            <details className="text-sm text-muted">
               <summary className="cursor-pointer">Subscribe by hand</summary>
               <p className="mt-1">iPhone: Settings, Calendar, Accounts, Add Account, Other, Add Subscribed Calendar, paste this address. Google Calendar: Other calendars, +, From URL.</p>
               <code className="mt-1 block break-all rounded bg-cream p-2">{feedUrl}</code>
@@ -151,13 +151,13 @@ export default async function ProfilePage({ searchParams }: { searchParams: Prom
             </details>
           </div>
 
-          <form action={setMfa} className="card space-y-3 p-4">
-            <h2 className="text-lg">Two-step sign-in</h2>
-            <label className="flex items-center gap-2 text-sm">
-              <input type="checkbox" name="mfa" defaultChecked={user.mfaRequired || user.role !== "volunteer"} disabled={user.role !== "volunteer"} />
+          <form action={setMfa} className="card space-y-3 p-5">
+            <h2 className="text-xl font-bold text-navy">Two-step sign-in</h2>
+            <label className="flex min-h-11 items-center gap-3 text-base">
+              <input type="checkbox" name="mfa" className="h-5 w-5 accent-navy" defaultChecked={user.mfaRequired || user.role !== "volunteer"} disabled={user.role !== "volunteer"} />
               Ask for a code after my password
             </label>
-            {user.role !== "volunteer" && <p className="text-xs text-muted">Always on for staff.</p>}
+            {user.role !== "volunteer" && <p className="text-sm text-muted">Always on for staff.</p>}
             {user.role === "volunteer" && <SubmitButton className="btn-ghost">Save</SubmitButton>}
           </form>
         </div>

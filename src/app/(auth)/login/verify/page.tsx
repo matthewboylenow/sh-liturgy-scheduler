@@ -13,9 +13,9 @@ export default async function VerifyPage({ searchParams }: { searchParams: Promi
   const pretty = dest.startsWith("+") ? formatPhone(dest) : dest;
 
   return (
-    <div className="card w-full max-w-md p-6">
-      <h2 className="mb-1 text-lg">Enter the code</h2>
-      <p className="mb-4 text-sm text-muted">
+    <div className="card w-full max-w-md p-6 sm:p-8">
+      <h2 className="mb-1 text-2xl font-bold text-navy">Enter the code</h2>
+      <p className="mb-5 text-base text-muted">
         Sent to <span className="font-medium text-ink">{pretty}</span>.
       </p>
       {sp.error && (
@@ -34,7 +34,7 @@ export default async function VerifyPage({ searchParams }: { searchParams: Promi
         <input type="hidden" name="area" value={area} />
         <input
           name="code"
-          className="input text-center text-2xl tracking-[0.5em]"
+          className="input text-center text-3xl tracking-[0.4em]"
           inputMode="numeric"
           autoComplete="one-time-code"
           pattern="[0-9]{6}"
@@ -43,18 +43,18 @@ export default async function VerifyPage({ searchParams }: { searchParams: Promi
           autoFocus
         />
         {mfa && (
-          <label className="flex items-center gap-2 text-sm">
-            <input type="checkbox" name="remember" defaultChecked /> Remember this device for 30 days
+          <label className="flex items-center gap-3 text-base">
+            <input type="checkbox" name="remember" defaultChecked className="h-5 w-5 accent-navy" /> Remember this device for 30 days
           </label>
         )}
-        <SubmitButton pendingText="Checking">Continue</SubmitButton>
+        <SubmitButton className="btn-primary btn-lg w-full" pendingText="Checking">Continue</SubmitButton>
       </form>
       <form action={resendCode} className="mt-4 text-center">
         <input type="hidden" name="dest" value={dest} />
         <input type="hidden" name="next" value={next} />
         <input type="hidden" name="area" value={area} />
         {mfa && <input type="hidden" name="mfa" value="1" />}
-        <button type="submit" className="text-xs text-muted underline">
+        <button type="submit" className="min-h-11 text-base text-navy underline">
           Send a new code
         </button>
       </form>

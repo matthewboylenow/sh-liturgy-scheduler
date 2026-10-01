@@ -28,8 +28,9 @@ export default async function LiturgyPage({
   return (
     <>
       <PageTitle
+        eyebrow={l.title ?? "Mass"}
         title={`${fmtDateLong(l.date)} · ${fmtTime(l.time)}`}
-        subtitle={[l.title, l.location].filter(Boolean).join(" · ")}
+        subtitle={l.location}
         actions={
           <Link href="/app/schedule" className="btn-ghost">
             All Masses
@@ -52,8 +53,8 @@ export default async function LiturgyPage({
         </div>
       )}
       {mine && (
-        <div className="card mb-4 flex flex-wrap items-center justify-between gap-3 border-navy/30 p-4">
-          <div className="text-sm">
+        <div className="card mb-4 flex flex-wrap items-center justify-between gap-3 border-l-4 border-l-green-700 p-5">
+          <div className="text-lg font-semibold text-navy">
             You are serving at this Mass.
             {mine.status === "sub_requested" && <span className="ml-2 text-yellow-800">Sub requested.</span>}
           </div>
@@ -63,7 +64,7 @@ export default async function LiturgyPage({
                 <input type="hidden" name="assignmentId" value={mine.id} />
                 <input type="hidden" name="action" value="confirm" />
                 <input type="hidden" name="return" value={self} />
-                <button className="btn-primary px-3 py-1 text-xs">I&apos;ll be there</button>
+                <button className="btn-primary">I&apos;ll be there</button>
               </form>
             )}
             {mine.status === "sub_requested" ? (
@@ -71,21 +72,21 @@ export default async function LiturgyPage({
                 <input type="hidden" name="assignmentId" value={mine.id} />
                 <input type="hidden" name="action" value="undo_sub" />
                 <input type="hidden" name="return" value={self} />
-                <button className="btn-ghost px-3 py-1 text-xs">I can make it after all</button>
+                <button className="btn-ghost">I can make it after all</button>
               </form>
             ) : (
               <form action={updateAssignment}>
                 <input type="hidden" name="assignmentId" value={mine.id} />
                 <input type="hidden" name="action" value="request_sub" />
                 <input type="hidden" name="return" value={self} />
-                <button className="btn-ghost px-3 py-1 text-xs">I need a sub</button>
+                <button className="btn-ghost">I need a sub</button>
               </form>
             )}
             <form action={updateAssignment}>
               <input type="hidden" name="assignmentId" value={mine.id} />
               <input type="hidden" name="action" value="drop" />
               <input type="hidden" name="return" value={self} />
-              <button className="btn-danger px-3 py-1 text-xs">Drop</button>
+              <button className="btn-danger">Drop</button>
             </form>
           </div>
         </div>

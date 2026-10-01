@@ -1,20 +1,22 @@
 ---
 version: 1
 name: saint-helen-liturgy
-description: A calm, trustworthy parish tool. Cream paper ground, navy as the structural color, a single rust accent for the one action that matters on each screen, and gold only for warnings. Libre Baskerville headings give it a printed-bulletin feel; Libre Franklin body keeps forms and tables quick to scan. Three surfaces, three densities. The volunteer portal is phone-first and spacious. The admin area is a desktop working tool. The kiosk is a dark navy board with huge touch targets for a 7 to 10 inch sacristy screen.
+description: The parish website, sainthelen.org, carried into a tool. Warm off-white ground, navy as the structural color, a single rust accent for the one action that matters on each screen, gold only for warnings. Bold Libre Baskerville headings, a small tracked uppercase eyebrow above them, soft-shadowed cards with 16px corners, and buttons that lift a pixel on hover, all lifted from the site. Three surfaces, three densities. The volunteer portal is phone-first and sized for ages 18 to 99. The admin area is a desktop working tool. The kiosk is a dark navy board with huge touch targets for a 7 to 10 inch sacristy screen.
 
 # Mirrors src/app/globals.css @theme. Change both together.
 colors:
   navy: "#1F346D"          # structure: nav, primary buttons, headings, kiosk ground
-  navy-dark: "#172752"     # primary button hover
+  navy-dark: "#162849"     # primary button hover (site hover value)
   navy-light: "#2C4A95"    # reserved, rarely used
   rust: "#CD5334"          # the accent. Sign up buttons, open-slot counts, staff links, one per view
-  rust-dark: "#B1452A"     # accent hover
-  cream: "#FAF9F7"         # page canvas
+  rust-dark: "#B84829"     # accent hover (site hover value)
+  cream: "#F7F5F1"         # page canvas
+  sand: "#EFEBE4"          # segmented controls, date tiles, grid header, full/away cells
+  teal: "#17BEBB"          # site palette, reserved
   gold: "#D4AF37"          # warnings and "needs a sub" only; never decoration
-  ink: "#1C1C1C"           # body text
-  muted: "#6B6B6B"         # captions, meta, table headers
-  line: "#E6E2DC"          # hairlines, card borders (warm, not gray)
+  ink: "#0E0E0E"           # body text (site value)
+  muted: "#5F6368"         # captions, meta, table headers
+  line: "#E3DFD8"          # hairlines, card borders (warm, not gray)
   surface: "#FFFFFF"       # cards, inputs, tables
   success: "#15803D"       # green-700 for checked in, filled, confirmed
   danger: "#B91C1C"        # red-700 text on white for destructive buttons
@@ -22,14 +24,20 @@ colors:
 typography:
   display:
     fontFamily: "'Libre Baskerville', Georgia, serif"
-    fontSize: 30px
-    fontWeight: 400
+    fontSize: 32px
+    fontWeight: 700
     lineHeight: 1.2
   heading:
     fontFamily: "'Libre Baskerville', Georgia, serif"
     fontSize: 20px
-    fontWeight: 400
+    fontWeight: 700
     lineHeight: 1.3
+  eyebrow:
+    fontFamily: "'Libre Franklin', sans-serif"
+    fontSize: 12px
+    fontWeight: 600
+    letterSpacing: 0.12em
+    textTransform: uppercase
   body:
     fontFamily: "'Libre Franklin', -apple-system, 'Segoe UI', Helvetica, Arial, sans-serif"
     fontSize: 16px
@@ -62,14 +70,16 @@ spacing:
   container: 1152px
 
 rounded:
-  sm: 6px       # buttons, inputs, alerts
-  md: 8px       # cards
-  lg: 12px      # kiosk tiles
+  sm: 8px       # buttons, inputs, alerts, grid cells
+  md: 12px      # kiosk tiles, date tiles
+  lg: 16px      # cards, bands, sheets
   xl: 16px      # kiosk modal
   full: 9999px  # pills
 
 elevation:
-  card: "0 1px 2px rgba(0,0,0,.05)"
+  card: "0 4px 20px rgba(31,52,109,.07)"
+  button: "0 1px 4px rgba(0,0,0,.08)"
+  button-hover: "0 2px 8px rgba(0,0,0,.12)"
   modal: "0 25px 50px -12px rgba(0,0,0,.25)"
 
 motion:
@@ -100,7 +110,8 @@ Headings are Libre Baskerville at regular weight. They are never bold; the serif
 - **Gold** (`{colors.gold}`): only for "needs a sub" pills (30% tint background, dark yellow text), warning alerts, and the dashed open-slot outline on the kiosk. It never fills a button.
 
 ### Surface
-- **Cream** (`{colors.cream}`): body background. Also the hover background for ghost buttons and the kiosk fill-in picker buttons.
+- **Cream** (`{colors.cream}`): body background. Also the hover background for list rows.
+- **Sand** (`{colors.sand}`): the one step darker. Segmented controls, the date tile on a Mass card, the sign-up grid header, and full or away grid cells.
 - **Surface** (`{colors.surface}`): cards, inputs, table bodies, modal bodies.
 - **Line** (`{colors.line}`): every border. It is warm, so do not swap in Tailwind gray borders.
 
@@ -114,9 +125,9 @@ Headings are Libre Baskerville at regular weight. They are never bold; the serif
 
 ## Typography
 
-- Page title: `{typography.display}` in navy, followed by a one-line `{typography.small}` muted subtitle that says what to do here.
-- Card and section titles: `{typography.heading}`.
-- Everything interactive is `{typography.small}` at weight 600 for buttons, 500 for labels.
+- Page title: `{typography.display}` bold in navy, with an optional `{typography.eyebrow}` in rust above it (Open seats, Your Masses, the Mass title) and a one-line `{typography.body}` muted subtitle that says what to do here.
+- Card and section titles: `{typography.heading}` bold in navy.
+- Volunteer surfaces read at 16px body, 14px for meta lines, never 12px except pills and eyebrows. Buttons are 16px weight 600, labels 14px weight 600.
 - Table headers: `{typography.caption}` uppercase, tracked, muted.
 - Dates read "Sun, Oct 4 · 10:30 AM" with a middle dot, and they never wrap. Use `whitespace-nowrap` on any date-time string in a table cell.
 - No em dashes anywhere. Use a period, a comma, or a middle dot.
@@ -126,25 +137,27 @@ Headings are Libre Baskerville at regular weight. They are never bold; the serif
 
 - 4px base. Card padding 16px. Gaps between cards 16px. Section gap 24px. Page gutter 16px on phone.
 - Container max 1152px, centered. Two-column layouts are `lg:grid-cols-3` with the working area spanning two and a sidebar form in the third; below `lg` they stack, sidebar last.
-- Header: white, hairline bottom, wordmark left, nav center on desktop, user and sign out right. On phone the nav becomes a horizontally scrolling row under the header.
-- Volunteer schedule groups Masses under "Weekend of October 4" headers in muted uppercase caption style; Masses are two-up on desktop, one-up on phone.
+- Header: white, hairline bottom. Mark plus two-line wordmark left (bold serif name over a tracked "Parish Community of Saint Helen" or "Staff"), first name and Sign out right. Pill tabs underneath, 44px tall, active one navy. On phone the volunteer wordmark shortens to a "Saint Helen" eyebrow over "Liturgy Scheduler" and the tabs move to a fixed bottom bar with an icon and a word per item, 64px tall. Admin keeps the top tabs, scrolling, at every width.
+- Volunteer home opens with a navy band (greeting, one line of status, the Sign up to serve button), then cards: next Masses two-thirds wide, open-seat count and ministries stacked beside it.
+- Sign-up is a grid, weekends down and Mass times across; see Components.
+- Sign-in is split: a photo of the parish at Mass under a navy gradient with the mark, eyebrow, title and one sentence, beside the form card. Staff sign-in swaps the photo for a plain navy band so nobody mistakes one for the other. On phone the panel sits on top.
 
 ## Elevation and depth
 
-- Cards: hairline border plus `{elevation.card}`. That is the only shadow in the volunteer and admin areas.
+- Cards: faint hairline at 60% plus `{elevation.card}`, `{rounded.lg}`. Buttons carry `{elevation.button}` and rise to `{elevation.button-hover}` with a 1px lift, as on the site. Those are the only shadows in the volunteer and admin areas.
 - Kiosk panels: navy ground with white at 5% for ministry groups and white tiles for people. No shadows on the kiosk; contrast does the work.
 - Modals: black scrim at 50%, white body, `{rounded.xl}`, `{elevation.modal}`.
 
 ## Components
 
 ### Buttons
-Height 36px (py-2), `{rounded.sm}`, weight 600, 14px. Four kinds: primary (navy, white text), accent (rust, white text, for sign-up actions only), ghost (white, hairline, ink text, cream hover), danger (white, red border and text). Small variant is px-2.5 py-1 text-xs inside table rows. Disabled at 50% opacity. Kiosk buttons are a separate species: min height 68px, 18px text, `{rounded.lg}`.
+Min height 44px, `{rounded.sm}`, weight 600, 16px, soft shadow, 1px lift on hover. Four kinds: primary (navy, white text), accent (rust, white text, for sign-up actions only), ghost (white, 2px navy border, navy text, the site's secondary button), danger (white, 2px red border, red text). `.btn-lg` is 56px and 18px for the one main action on a volunteer screen. Inside admin table rows use `.btn-quiet` (flat, hairline, 12px) or override padding and size. Disabled at 50% opacity. Kiosk buttons are a separate species: min height 68px, 18px text, `{rounded.lg}`.
 
 ### Inputs
-White, hairline border, `{rounded.sm}`, 16px text so iOS does not zoom, navy focus ring at 40%. Labels above, 14px weight 500. Helper text below in caption muted.
+White, hairline border, `{rounded.sm}`, 48px min height, 16px text so iOS does not zoom, navy border and ring at 25% on focus. Labels above, 14px weight 600. Checkboxes are 20px with `accent-navy` and sit in a 44px row.
 
 ### Cards
-White, hairline, `{rounded.md}`. A card with a header gets a cream/60 header strip with a hairline under it. Never nest a card in a card; use a bordered row (`border border-line/70`) inside a card instead.
+White, `{rounded.lg}`, `{elevation.card}`. Padding 20px. A card with a header gets a sand/50 header strip with a hairline under it. A Mass card leads with a sand date tile (month small caps over a large serif day). Never nest a card in a card; use a bordered row (`border border-line/70`) inside a card instead.
 
 ### Ministry pill
 `{rounded.full}`, 12px weight 500, white text on the ministry's own color, short name only. The ministry color is data, not theme, and it is the only place arbitrary hues appear.
@@ -155,8 +168,11 @@ Same shape, tinted background with dark text, lowercase, underscores replaced wi
 ### Tables
 Full width, 14px, header caption style, hairline row dividers at 70% opacity. On phone the table stays a table inside an `overflow-x-auto` card rather than collapsing into cards, because staff need to scan columns.
 
+### Sign-up grid
+One table: weekends as rows (serif bold "Oct 3–4"), Mass times as columns ("Sat 5p"), weekday Masses as extra rows. Cells are 56px tall on phone (48px wide at 390), 64px on tablet and up. States: open is white with a 2px rust outline and "N open"; picked is rust fill with a check and the seat; serving is green-700 fill reading "You"; full or away is sand. Picks collect in a sticky bar above the bottom tab bar with Clear and a `.btn-lg` Sign up. A Mass with several seat kinds opens a bottom sheet with 56px option rows.
+
 ### Alerts
-`{rounded.sm}`, 14px, tinted border and background: info navy/5, success green-50, warning gold/10, error red-50.
+`{rounded.sm}`, 16px, tinted border and background: info navy/5, success green-50, warning gold/10, error red-50.
 
 ### Kiosk board
 Navy ground, white header text, clock in `{typography.kiosk-clock}`. Mass tabs are rounded-xl chips, the active one white on navy. Ministry groups are white/5 panels. A person tile is white with navy text and "Tap to check in" on the right; once checked in it turns solid green with a check mark and is disabled. Open slots are dashed gold outlines reading "Open. Tap to fill in." Toasts are white pills at the bottom center with an Undo link in rust.
@@ -169,10 +185,10 @@ Navy ground, white header text, clock in `{typography.kiosk-clock}`. Mass tabs a
 
 ## Responsive behavior
 
-- Phone (390px) is the primary volunteer width. Everything must work one-handed: 44px touch targets, sign-up buttons on the right edge of each row.
+- Phone (390px) is the primary volunteer width and the audience runs 18 to 99. Everything must work one-handed and with reading glasses: 44px minimum targets, 48px inputs, 56px for the main action, 16px body text, no horizontal page scroll. Tablet (820px) gets the desktop layout with wider grid cells.
 - Admin is designed at 1280px and must remain usable at 390px by scrolling tables horizontally, never by hiding columns silently.
 - Kiosk is designed at 1024x600 (7 inch) through 1920x1080. Three ministry columns at xl, two at md, one below. No hover states matter there.
-- The header nav collapses to a scrolling row below md.
+- Volunteer nav moves to the bottom tab bar below md; admin nav stays a scrolling row.
 
 ## Voice and copy
 

@@ -1,6 +1,6 @@
 import Link from "next/link";
 import Image from "next/image";
-import { NavLinks } from "@/components/nav-links";
+import { NavLinks, BottomNav, type IconName } from "@/components/nav-links";
 import { returnToOwnAccount } from "@/app/admin/actions";
 import type { SessionUser } from "@/lib/auth";
 import { env } from "@/lib/env";
@@ -12,11 +12,12 @@ export function Shell({
   children,
 }: {
   user: SessionUser;
-  nav: { href: string; label: string }[];
+  nav: { href: string; label: string; icon?: IconName }[];
   area: "volunteer" | "admin";
   children: React.ReactNode;
 }) {
   const isStaff = user.role === "admin" || user.role === "coordinator";
+  const volunteer = area === "volunteer";
   return (
     <div className="flex min-h-full flex-1 flex-col">
       {user.impersonatorId && (
@@ -28,41 +29,53 @@ export function Shell({
         </form>
       )}
       <header className="border-b border-line bg-white print:hidden">
-        <div className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-4 pt-3">
-          <Link href={area === "admin" ? "/admin" : "/app"} className="flex items-center gap-2.5">
-            <Image src="/brand/saint-helen-mark.png" alt="" width={36} height={36} className="h-9 w-9" />
-            <span className="whitespace-nowrap font-serif text-lg text-navy sm:text-xl">{env.parishName()} Liturgy Scheduler</span>
-            {area === "admin" && <span className="pill hidden bg-rust/10 text-rust sm:inline-flex">Admin</span>}
+        <div className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-4 py-3">
+          <Link href={volunteer ? "/app" : "/admin"} className="flex min-w-0 items-center gap-3">
+            <Image src="/brand/saint-helen-mark.png" alt="" width={44} height={44} className="h-10 w-10 shrink-0 sm:h-11 sm:w-11" />
+            <span className="min-w-0 leading-tight">
+              <span className="block text-[0.65rem] font-semibold uppercase tracking-[0.12em] text-muted sm:hidden">{volunteer ? env.parishName() : "Staff"}</span>
+              <span className="block font-serif text-lg font-bold text-navy sm:hidden">Liturgy Scheduler</span>
+              <span className="hidden truncate font-serif text-xl font-bold text-navy sm:block">{env.parishName()} Liturgy Scheduler</span>
+              <span className="hidden text-xs uppercase tracking-[0.12em] text-muted sm:block">{volunteer ? "Parish Community of Saint Helen" : "Staff"}</span>
+            </span>
           </Link>
-          <div className="flex items-center gap-4 text-sm">
-            <span className="hidden text-muted sm:inline">{user.firstName}</span>
+          <div className="flex shrink-0 items-center gap-3">
+            <span className="hidden text-base text-muted sm:inline">{user.firstName}</span>
             <form action="/api/auth/logout" method="post">
-              <button className="btn-ghost whitespace-nowrap px-3 py-1.5">Sign out</button>
+              <button className="btn-ghost min-h-10 whitespace-nowrap px-3 py-1.5 text-sm">Sign out</button>
             </form>
           </div>
         </div>
-        <div className="mx-auto max-w-6xl px-4">
+        <div className={`mx-auto max-w-6xl px-4 ${volunteer ? "hidden md:block" : ""}`}>
           <NavLinks
             items={[
               ...nav,
-              ...(isStaff && area === "volunteer" ? [{ href: "/admin", label: "Admin", muted: true }] : []),
-              ...(area === "admin" ? [{ href: "/app", label: "Volunteer view", muted: true }] : []),
+              ...(isStaff && volunteer ? [{ href: "/admin", label: "Admin", muted: true }] : []),
+              ...(!volunteer ? [{ href: "/app", label: "Volunteer view", muted: true }] : []),
             ]}
           />
         </div>
       </header>
-      <main className="mx-auto w-full max-w-6xl flex-1 px-4 py-6">{children}</main>
-      <footer className="px-4 py-4 text-center text-xs text-muted print:hidden">Parish Community of {env.parishName()} · Westfield, NJ</footer>
+      <main className={`mx-auto w-full max-w-6xl flex-1 px-4 py-6 ${volunteer ? "pb-24 md:pb-8" : ""}`}>{children}</main>
+      <footer className={`print:hidden ${volunteer ? "hidden md:block" : ""}`}>
+        <div className="mx-auto max-w-6xl px-4 py-5 text-center text-sm text-muted">
+          <span className="font-serif italic">Worshipping God, Serving Others, Making Disciples</span>
+          <span className="mx-2">·</span>
+          Parish Community of {env.parishName()}, Westfield, NJ
+        </div>
+      </footer>
+      {volunteer && <BottomNav items={nav} />}
     </div>
   );
 }
 
-export function PageTitle({ title, subtitle, actions }: { title: string; subtitle?: string; actions?: React.ReactNode }) {
+export function PageTitle({ title, subtitle, eyebrow, actions }: { title: string; subtitle?: string; eyebrow?: string; actions?: React.ReactNode }) {
   return (
-    <div className="mb-5 flex flex-wrap items-end justify-between gap-3">
+    <div className="mb-6 flex flex-wrap items-end justify-between gap-3">
       <div>
-        <h1 className="text-2xl text-navy">{title}</h1>
-        {subtitle && <p className="text-sm text-muted">{subtitle}</p>}
+        {eyebrow && <div className="eyebrow mb-1">{eyebrow}</div>}
+        <h1 className="text-3xl font-bold text-navy sm:text-[2rem]">{title}</h1>
+        {subtitle && <p className="mt-1 max-w-2xl text-base text-muted">{subtitle}</p>}
       </div>
       {actions && <div className="flex flex-wrap gap-2">{actions}</div>}
     </div>
